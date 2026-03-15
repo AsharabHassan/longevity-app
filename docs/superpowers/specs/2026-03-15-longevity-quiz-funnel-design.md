@@ -87,12 +87,41 @@ Standalone web app (quiz.harleystreetmedicalwellness.co.uk) that drives Facebook
 ### Phase 3: Symptom Deep Dive (Q10-Q14) — Adaptive Branching
 
 - **Q10:** Which of these do you experience regularly? [Multi-select checkboxes: Brain fog, Chronic fatigue, Frequent colds, Skin dullness, Slow recovery, Digestive issues, Joint pain, Mood swings, Weight struggles, None]
-- **Q11:** ADAPTIVE — Claude picks based on Q10 selections
-- **Q12:** ADAPTIVE — Second personalized follow-up
-- **Q13:** Skin quality changes in past year [Fixed]
-- **Q14:** Energy crashes during the day [Fixed]
+- **Q11:** ADAPTIVE — Claude selects from a predefined question bank based on Q10 selections (see Adaptive Question Bank below)
+- **Q12:** ADAPTIVE — Second question from the bank based on Q10 + Q11 answer
+- **Q13:** Have you noticed changes in your skin quality in the past year? [Multiple choice: Yes, significantly worse / Slightly worse / No change / Improved]
+- **Q14:** How often do you experience energy crashes during the day? [Multiple choice: Never / Occasionally (1-2x/week) / Frequently (most days) / Constantly]
 
 > AI micro-insight after Q12
+
+### Adaptive Question Bank
+
+Claude selects from these predefined questions based on Q10 symptom selections. Each question has 4 fixed multiple-choice options scored 0-4, ensuring deterministic scoring.
+
+**If "Brain fog" or "Chronic fatigue" selected:**
+- "How would you describe your mental clarity throughout the day?" [Sharp all day (4) / Clear mornings, foggy afternoons (2) / Foggy most of the day (1) / Persistently cloudy, can't focus (0)]
+- "How long have you been experiencing cognitive difficulties?" [Just recently, less than a month (3) / A few months (2) / 6-12 months (1) / Over a year (0)]
+
+**If "Frequent colds" or "Slow recovery" selected:**
+- "How many times have you been ill in the past 12 months?" [0-1 times (4) / 2-3 times (2) / 4-5 times (1) / 6+ times (0)]
+- "How long does it typically take you to recover from a cold or flu?" [A few days (4) / About a week (2) / 1-2 weeks (1) / More than 2 weeks (0)]
+
+**If "Joint pain" or "Digestive issues" selected:**
+- "How would you rate your inflammatory symptoms?" [Rare/mild (4) / Occasional flare-ups (2) / Frequent, affects daily life (1) / Chronic and severe (0)]
+- "Have you been exposed to environmental toxins (mold, chemicals, heavy metals)?" [No known exposure (4) / Possible minor exposure (2) / Known moderate exposure (1) / Significant ongoing exposure (0)]
+
+**If "Mood swings" or "Weight struggles" selected:**
+- "How stable is your energy after meals?" [Stable, no crashes (4) / Minor dip sometimes (2) / Regular post-meal crashes (1) / Severe crashes, need to nap (0)]
+- "How would you describe your stress recovery?" [Bounce back quickly (4) / Takes a day or two (2) / Takes a week+ (1) / Feel permanently stressed (0)]
+
+**If "Skin dullness" selected:**
+- "How would you describe your skin's response to skincare products?" [Responds well (4) / Some improvement (2) / Minimal response (1) / No improvement despite trying (0)]
+
+**Fallback (if "None" selected or no match):**
+- "How would you rate your overall vitality compared to 5 years ago?" [Better than ever (4) / About the same (3) / Noticeably declined (1) / Significantly worse (0)]
+- "What best describes your current approach to health optimization?" [Active biohacker (4) / Regular supplements + exercise (3) / Trying to improve (2) / Haven't started yet (1)]
+
+Claude selects the most relevant 2 questions from the bank. The scoring maps directly into the dimension system: brain fog/fatigue questions feed Cognitive Function, illness/recovery questions feed Immune Resilience, inflammation/toxin questions feed Energy & Vitality, mood/metabolism questions feed Metabolic Health.
 
 ### Phase 4: Readiness (Q15-Q16) — Fixed
 
@@ -106,7 +135,7 @@ Standalone web app (quiz.harleystreetmedicalwellness.co.uk) that drives Facebook
 - Email
 - Phone
 - [Unlock My Report] button
-- Trust badges: 256-bit encrypted, GDPR compliant, 10,000+ assessed
+- Trust badges: 256-bit encrypted, GDPR compliant, Harley Street certified
 
 ## Wellness Score Engine
 
@@ -132,12 +161,15 @@ Standalone web app (quiz.harleystreetmedicalwellness.co.uk) that drives Facebook
 
 ### Biological Age Formula
 
-| Score | Biological Age Offset |
-|---|---|
-| 85-100 | 5-10 years younger |
-| 70-84 | Roughly chronological age |
-| 55-69 | 3-7 years older |
-| Below 55 | 8-15 years older |
+Continuous formula: `biologicalAge = chronologicalAge + round((70 - wellnessScore) * 0.3)`
+
+Examples:
+- Score 90 → 6 years younger
+- Score 75 → 1.5 years younger (rounds to -2)
+- Score 62 → 2.4 years older (rounds to +2)
+- Score 45 → 7.5 years older (rounds to +8)
+
+Capped at ±15 years from chronological age.
 
 ### Score Labels
 
@@ -159,7 +191,7 @@ Standalone web app (quiz.harleystreetmedicalwellness.co.uk) that drives Facebook
 | Metabolic + Energy | Metabolic Health Programme (£1,500) |
 | Skin + Cellular | Skin Glow IV (£299) |
 | Multiple low / chronic | EBOO Therapy (£1,995) + Phospholipid Exchange (£425) |
-| Detox signals | Detox IV (£399) |
+| Detox signals (Metabolic < 50 AND symptoms include digestive issues, bloating, or toxin exposure) | Detox IV (£399) |
 
 Always recommends 2-3 treatments. Upsell logic: if 3+ dimensions below 60, recommend EBOO or 10-Session Package.
 
@@ -216,7 +248,7 @@ Single API call generates entire report.
 - No contradicting doctor's advice
 - No claims beyond clinic scope
 - No competitor discussion
-- 20 message limit per session
+- 20 message limit per session — after limit: input disabled, show "You've reached the chat limit. Book a free consultation to continue the conversation with our team." with booking CTA
 
 ### Context Passed
 - Full quiz answers + scores
@@ -226,7 +258,19 @@ Single API call generates entire report.
 
 ## GoHighLevel Integration
 
-Webhook payload on lead capture:
+### Webhook Configuration
+- Webhook URL stored as environment variable (`GHL_WEBHOOK_URL`)
+- POST request with JSON payload
+- No authentication required (GoHighLevel inbound webhooks use URL-based auth)
+- Timeout: 10 seconds
+
+### Failure Handling
+- Webhook fires asynchronously after lead capture — does NOT block report display
+- If webhook fails, retry up to 3 times with exponential backoff (2s, 4s, 8s)
+- Failed webhooks logged to Vercel logs for manual recovery
+- User always sees their report regardless of webhook success/failure
+
+### Webhook Payload
 - First name, email, phone
 - All 16 quiz answers (raw)
 - Wellness score (0-100)
@@ -257,7 +301,6 @@ Email sequences built entirely in GoHighLevel — not in this app.
 - Schema markup: MedicalWebPage, Quiz, FAQPage
 - Meta tags, Open Graph, Twitter cards
 - Fast Core Web Vitals (Next.js + Vercel)
-- Blog-ready `/resources` section for future content
 
 ## GEO Strategy (AI Search Visibility)
 
@@ -322,3 +365,4 @@ Email sequences built entirely in GoHighLevel — not in this app.
 - Admin dashboard (GoHighLevel CRM)
 - User accounts / login
 - Payment processing
+- Blog/resources section
