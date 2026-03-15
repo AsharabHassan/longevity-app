@@ -18,7 +18,8 @@
       "Bash(rm -f \"C:/Longevity App idea/package.json\" && cp -r /tmp/longevity-quiz/* /tmp/longevity-quiz/.* \"C:/Longevity App idea/\" 2>/dev/null; echo \"done\")",
       "Bash(cd /tmp/longevity-quiz && cp -r next.config.ts tsconfig.json eslint.config.mjs postcss.config.mjs package.json package-lock.json \"C:/Longevity App idea/\" && cp -r src \"C:/Longevity App idea/\" && cp -r public \"C:/Longevity App idea/\" && echo \"done\")",
       "Bash(cd \"C:/Longevity App idea\" && npm install 2>&1 | tail -5)",
-      "Bash(cd \"C:/Longevity App idea\" && npm install @anthropic-ai/sdk lucide-react 2>&1 | tail -3)"
+      "Bash(cd \"C:/Longevity App idea\" && npm install @anthropic-ai/sdk lucide-react 2>&1 | tail -3)",
+      "Bash(cd \"C:/Longevity App idea\" && npx next build 2>&1 | tail -15)"
     ]
   }
 }

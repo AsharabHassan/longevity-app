@@ -79,12 +79,18 @@ export default function ReportPage() {
       rec: TreatmentRecommendation
     ) => {
       try {
+        // Convert answers array to a record for the Claude API
+        const answersRecord: Record<string, string | string[] | number> = {};
+        for (const a of ans) {
+          answersRecord[a.questionId] = a.value;
+        }
+
         const res = await fetch("/api/report/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            answers: ans,
-            dimensions: dims,
+            answers: answersRecord,
+            dimensions: dims.map((d) => ({ name: d.name, score: d.score })),
             wellnessScore: ws,
             biologicalAge: ba,
             chronologicalAge: ca,
@@ -104,8 +110,8 @@ export default function ReportPage() {
   );
 
   useEffect(() => {
-    // Read quiz data from sessionStorage
-    const stored = sessionStorage.getItem("quizData");
+    // Read quiz data from sessionStorage (saved by QuizEngine as "quizResults")
+    const stored = sessionStorage.getItem("quizResults");
     if (!stored) {
       router.replace("/quiz");
       return;
@@ -113,36 +119,47 @@ export default function ReportPage() {
 
     try {
       const parsed = JSON.parse(stored);
+
+      // QuizEngine pre-calculates everything and stores it
       const quizAnswers: QuizAnswer[] = parsed.answers ?? [];
-      const age: number = parsed.age ?? 35;
-      const loc: string = parsed.location ?? "London";
+      const dims: DimensionScore[] = parsed.dimensions ?? [];
+      const ws: number = parsed.wellnessScore ?? 0;
+      const ba: number = parsed.biologicalAge ?? 0;
+      const ca: number = parsed.chronologicalAge ?? 35;
+      const rec: TreatmentRecommendation = parsed.treatments ?? { primary: null, supporting: [] };
 
       setAnswers(quizAnswers);
-      setChronologicalAge(age);
-      setLocation(loc);
-
-      // Calculate scores
-      const dims = calculateDimensionScores(quizAnswers);
-      const ws = calculateWellnessScore(dims);
-      const ba = calculateBiologicalAge(age, ws);
-
+      setChronologicalAge(ca);
       setDimensions(dims);
       setWellnessScore(ws);
       setBiologicalAge(ba);
+
+      // Determine location from answers
+      const locAnswer = quizAnswers.find((a) => a.questionId === "q16");
+      const loc = typeof locAnswer?.value === "string" && locAnswer.value.includes("Glasgow")
+        ? "Glasgow"
+        : "London";
+      setLocation(loc);
 
       // Find lowest dimension
       const sorted = [...dims].sort((a, b) => a.score - b.score);
       setLowestDimension(sorted[0]?.name ?? "Energy & Vitality");
 
-      // Recommend treatments
-      const symptoms: string[] = parsed.symptoms ?? [];
-      const rec = recommendTreatments(dims, symptoms);
-      setTreatments(rec);
+      // Use pre-calculated treatments, or recalculate if missing
+      if (rec.primary) {
+        setTreatments(rec);
+      } else {
+        const symptoms = quizAnswers
+          .find((a) => a.questionId === "q10");
+        const symptomList = Array.isArray(symptoms?.value) ? symptoms.value : [];
+        const freshRec = recommendTreatments(dims, symptomList as string[]);
+        setTreatments(freshRec);
+      }
 
       setReady(true);
 
       // Fetch AI narratives
-      fetchReport(quizAnswers, dims, ws, ba, age, rec);
+      fetchReport(quizAnswers, dims, ws, ba, ca, rec.primary ? rec : recommendTreatments(dims, []));
     } catch (err) {
       console.error("Failed to parse quiz data:", err);
       router.replace("/quiz");
