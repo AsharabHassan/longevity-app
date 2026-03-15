@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(echo $CLAUDE_PLUGIN_ROOT)",
+      "Bash(bash \"C:/Users/TRONYX/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.0/lib/brainstorm-server/start-server.sh\" --project-dir \"C:/Longevity App idea\")",
+      "Bash(cd \"C:/Users/TRONYX/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.0/lib/brainstorm-server\" && npm install 2>&1 | tail -5)",
+      "WebFetch(domain:harleystreetmedicalwellness.co.uk)",
+      "WebFetch(domain:novoslabs.com)",
+      "WebFetch(domain:longevies.com)",
+      "WebFetch(domain:www.scoreapp.com)",
+      "WebFetch(domain:www.leadshook.com)",
+      "Bash(cd \"C:/Longevity App idea\" && npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm 2>&1)",
+      "Bash(cd \"C:/Longevity App idea\" && npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm 2>&1 << EOF\nlongevity-quiz\nEOF)",
+      "Bash(cd \"C:/Longevity App idea\" && npm init -y 2>&1 && sed -i 's/\"name\": \".*\"/\"name\": \"longevity-quiz\"/' package.json)",
+      "Read(//c/tmp/**)",
+      "Bash(npx create-next-app@latest longevity-quiz --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm)",
+      "Bash(cd /tmp && echo \"n\" | npx create-next-app@latest longevity-quiz --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --no-turbopack 2>&1)",
+      "Bash(rm -f \"C:/Longevity App idea/package.json\" && cp -r /tmp/longevity-quiz/* /tmp/longevity-quiz/.* \"C:/Longevity App idea/\" 2>/dev/null; echo \"done\")",
+      "Bash(cd /tmp/longevity-quiz && cp -r next.config.ts tsconfig.json eslint.config.mjs postcss.config.mjs package.json package-lock.json \"C:/Longevity App idea/\" && cp -r src \"C:/Longevity App idea/\" && cp -r public \"C:/Longevity App idea/\" && echo \"done\")",
+      "Bash(cd \"C:/Longevity App idea\" && npm install 2>&1 | tail -5)",
+      "Bash(cd \"C:/Longevity App idea\" && npm install @anthropic-ai/sdk lucide-react 2>&1 | tail -3)"
+    ]
+  }
+}
