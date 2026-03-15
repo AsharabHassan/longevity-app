@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ArrowUp, X, Calendar } from "lucide-react";
+import { ArrowUp, X, Calendar, MessageCircle } from "lucide-react";
 import ChatMessage from "./ChatMessage";
 import { PixelEvents } from "@/lib/pixel";
-import type { ChatMessage as ChatMessageType } from "@/lib/types";
+import type { ChatMessage as ChatMessageType, QuizAnswer } from "@/lib/types";
 
 interface ChatWidgetProps {
   context: {
-    answers: unknown;
+    answers: QuizAnswer[];
     wellnessScore: number;
     biologicalAge: number;
     treatments: string[];
@@ -25,30 +25,10 @@ function DnaIcon({ size = 22, className = "" }: { size?: number; className?: str
       fill="none"
       className={className}
     >
-      <path
-        d="M7 4C7 4 7.5 6.5 12 8.5C16.5 10.5 17 13 17 13"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-      <path
-        d="M17 4C17 4 16.5 6.5 12 8.5C7.5 10.5 7 13 7 13"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-      <path
-        d="M7 11C7 11 7.5 13.5 12 15.5C16.5 17.5 17 20 17 20"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-      <path
-        d="M17 11C17 11 16.5 13.5 12 15.5C7.5 17.5 7 20 7 20"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
+      <path d="M7 4C7 4 7.5 6.5 12 8.5C16.5 10.5 17 13 17 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M17 4C17 4 16.5 6.5 12 8.5C7.5 10.5 7 13 7 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M7 11C7 11 7.5 13.5 12 15.5C16.5 17.5 17 20 17 20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M17 11C17 11 16.5 13.5 12 15.5C7.5 17.5 7 20 7 20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
       <line x1="8" y1="6" x2="16" y2="6" stroke="currentColor" strokeWidth="1.2" opacity="0.5" />
       <line x1="9" y1="9" x2="15" y2="9" stroke="currentColor" strokeWidth="1.2" opacity="0.5" />
       <line x1="8" y1="15" x2="16" y2="15" stroke="currentColor" strokeWidth="1.2" opacity="0.5" />
@@ -77,6 +57,8 @@ export default function ChatWidget({ context, lowestDimension }: ChatWidgetProps
   const [isLoading, setIsLoading] = useState(false);
   const [messageCount, setMessageCount] = useState(0);
   const [limitReached, setLimitReached] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [showNotificationBadge, setShowNotificationBadge] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = useCallback(() => {
@@ -87,15 +69,45 @@ export default function ChatWidget({ context, lowestDimension }: ChatWidgetProps
     scrollToBottom();
   }, [messages, isLoading, scrollToBottom]);
 
+  // Show tooltip prompt after 3 seconds on report page
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!isOpen) {
+        setShowTooltip(true);
+      }
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [isOpen]);
+
+  // Auto-hide tooltip after 8 seconds
+  useEffect(() => {
+    if (showTooltip) {
+      const timer = setTimeout(() => setShowTooltip(false), 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [showTooltip]);
+
+  // Convert answers array to record for Claude API
+  const answersRecord: Record<string, string | string[] | number> = {};
+  if (Array.isArray(context.answers)) {
+    for (const a of context.answers) {
+      if (a.questionId) {
+        answersRecord[a.questionId] = a.value;
+      }
+    }
+  }
+
   // Initialize opening message on first open
   useEffect(() => {
     if (isOpen && !hasOpened) {
       setHasOpened(true);
+      setShowTooltip(false);
+      setShowNotificationBadge(false);
       PixelEvents.chatStarted();
       setMessages([
         {
           role: "assistant",
-          content: `Hi! I've reviewed your longevity report. Your <strong>${lowestDimension}</strong> is your biggest opportunity for improvement. Want me to explain what's happening and how we can help?`,
+          content: `Hi! I've reviewed your longevity report. Your <strong>${lowestDimension}</strong> score is your biggest opportunity for improvement. Want me to explain what's happening and how we can help?`,
         },
       ]);
     }
@@ -116,7 +128,15 @@ export default function ChatWidget({ context, lowestDimension }: ChatWidgetProps
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: updatedMessages, context }),
+        body: JSON.stringify({
+          messages: updatedMessages,
+          context: {
+            answers: answersRecord,
+            wellnessScore: context.wellnessScore,
+            biologicalAge: context.biologicalAge,
+            treatments: context.treatments,
+          },
+        }),
       });
       const data = await res.json();
 
@@ -133,8 +153,7 @@ export default function ChatWidget({ context, lowestDimension }: ChatWidgetProps
         ...prev,
         {
           role: "assistant",
-          content:
-            "I'm having trouble connecting right now. Please try again in a moment.",
+          content: "I'm having trouble connecting right now. Please try again in a moment.",
         },
       ]);
     } finally {
@@ -151,33 +170,64 @@ export default function ChatWidget({ context, lowestDimension }: ChatWidgetProps
 
   return (
     <>
-      {/* Floating Chat Button */}
+      {/* Floating Chat Button with Tooltip & Notification */}
       {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="gold-gradient gold-glow fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95"
-          aria-label="Open chat"
-        >
-          <DnaIcon size={24} className="text-bg" />
-        </button>
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+          {/* Tooltip Popup */}
+          {showTooltip && (
+            <div
+              className="animate-fade-in flex items-center gap-2 rounded-xl border border-gold/20 bg-bg-card px-4 py-3 shadow-xl"
+              style={{ maxWidth: "260px" }}
+            >
+              <MessageCircle size={16} className="shrink-0 text-gold" />
+              <p className="text-xs leading-relaxed text-white/80">
+                <strong className="text-gold">Have questions?</strong> Ask our AI advisor about your report results
+              </p>
+              <button
+                onClick={() => setShowTooltip(false)}
+                className="shrink-0 text-muted hover:text-white"
+                aria-label="Dismiss"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          )}
+
+          {/* Chat Button */}
+          <button
+            onClick={() => setIsOpen(true)}
+            className="gold-gradient gold-glow relative flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95"
+            aria-label="Open chat"
+          >
+            <DnaIcon size={24} className="text-bg" />
+
+            {/* Notification Badge */}
+            {showNotificationBadge && (
+              <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-danger text-[10px] font-bold text-white shadow-md">
+                1
+              </span>
+            )}
+
+            {/* Pulsing ring animation */}
+            <span className="absolute inset-0 rounded-full border-2 border-gold/40 animate-ping" style={{ animationDuration: "2s" }} />
+          </button>
+        </div>
       )}
 
       {/* Chat Panel */}
       {isOpen && (
         <div className="fixed bottom-0 right-0 z-50 flex h-[min(600px,100dvh)] w-full flex-col border-t-2 border-gold/40 bg-bg shadow-2xl sm:bottom-6 sm:right-6 sm:h-[540px] sm:w-[400px] sm:rounded-2xl sm:border sm:border-white/5 sm:border-t-2 sm:border-t-gold/40 animate-fade-in">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-white/5 px-4 py-3">
+          <div className="flex items-center justify-between border-b border-white/5 bg-[rgba(212,168,83,0.02)] px-4 py-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[rgba(212,168,83,0.12)]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[rgba(212,168,83,0.12)] gold-border">
                 <DnaIcon size={18} className="text-gold" />
               </div>
               <div>
-                <p className="font-heading text-sm font-bold text-white">
-                  Longevity Advisor
-                </p>
+                <p className="font-heading text-sm font-bold text-white">Longevity Advisor</p>
                 <div className="flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                  <span className="text-[10px] text-muted">Online</span>
+                  <span className="text-[10px] text-muted">Online · Powered by AI</span>
                 </div>
               </div>
             </div>
@@ -190,6 +240,66 @@ export default function ChatWidget({ context, lowestDimension }: ChatWidgetProps
             </button>
           </div>
 
+          {/* Suggested Questions */}
+          {messages.length <= 1 && !isLoading && (
+            <div className="border-b border-white/5 px-4 py-3">
+              <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted/60">Suggested questions</p>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  "Why is my sleep score low?",
+                  "What does NAD+ do?",
+                  "Is EBOO worth it for me?",
+                  "How quickly will I see results?",
+                ].map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => {
+                      setInput(q);
+                      setTimeout(() => {
+                        const userMsg: ChatMessageType = { role: "user", content: q };
+                        const updated = [...messages, userMsg];
+                        setMessages(updated);
+                        setInput("");
+                        setMessageCount((c) => c + 1);
+                        setIsLoading(true);
+
+                        fetch("/api/chat", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            messages: updated,
+                            context: {
+                              answers: answersRecord,
+                              wellnessScore: context.wellnessScore,
+                              biologicalAge: context.biologicalAge,
+                              treatments: context.treatments,
+                            },
+                          }),
+                        })
+                          .then((r) => r.json())
+                          .then((data) => {
+                            if (data.message) {
+                              setMessages((prev) => [...prev, { role: "assistant", content: data.message }]);
+                            }
+                          })
+                          .catch(() => {
+                            setMessages((prev) => [
+                              ...prev,
+                              { role: "assistant", content: "I'm having trouble connecting. Please try again." },
+                            ]);
+                          })
+                          .finally(() => setIsLoading(false));
+                      }, 50);
+                    }}
+                    className="rounded-lg border border-white/5 bg-bg-card px-3 py-1.5 text-[11px] text-muted transition-colors hover:border-gold/20 hover:text-gold"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Messages */}
           <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
             {messages.map((msg, i) => (
@@ -201,8 +311,7 @@ export default function ChatWidget({ context, lowestDimension }: ChatWidgetProps
             {limitReached && (
               <div className="animate-fade-in mt-2 rounded-xl border border-gold/15 bg-[rgba(212,168,83,0.06)] p-4 text-center">
                 <p className="text-xs leading-relaxed text-muted">
-                  You&apos;ve reached the chat limit. Book a free consultation
-                  to continue the conversation with our team.
+                  You&apos;ve reached the chat limit. Book a free consultation to continue the conversation with our team.
                 </p>
                 <a
                   href="#book"
