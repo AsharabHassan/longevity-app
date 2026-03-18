@@ -56,7 +56,7 @@ export default function ChatWidget({ context, lowestDimension }: ChatWidgetProps
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [messageCount, setMessageCount] = useState(0);
-  const [limitReached, setLimitReached] = useState(false);
+  const [showBookingPrompt, setShowBookingPrompt] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const [showNotificationBadge, setShowNotificationBadge] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -107,21 +107,29 @@ export default function ChatWidget({ context, lowestDimension }: ChatWidgetProps
       setMessages([
         {
           role: "assistant",
-          content: `Hi! I've reviewed your longevity report. Your <strong>${lowestDimension}</strong> score is your biggest opportunity for improvement. Want me to explain what's happening and how we can help?`,
+          content: `Hi! I've reviewed your longevity report. Your <strong>${lowestDimension}</strong> score is your biggest opportunity for improvement. Want me to explain what's happening at the cellular level and how we can address it?`,
         },
       ]);
     }
   }, [isOpen, hasOpened, lowestDimension]);
 
-  async function handleSend() {
-    const text = input.trim();
-    if (!text || isLoading || limitReached) return;
+  // Conversion-focused suggested questions
+  const suggestedQuestions = [
+    `Why is my ${lowestDimension.toLowerCase()} score so low?`,
+    "How quickly will I notice results?",
+    "Why is this better than supplements?",
+    "What happens during my first session?",
+  ];
 
-    const userMessage: ChatMessageType = { role: "user", content: text };
+  async function sendMessage(text: string) {
+    if (!text.trim() || isLoading) return;
+
+    const userMessage: ChatMessageType = { role: "user", content: text.trim() };
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
     setInput("");
-    setMessageCount((c) => c + 1);
+    const newCount = messageCount + 1;
+    setMessageCount(newCount);
     setIsLoading(true);
 
     try {
@@ -140,13 +148,16 @@ export default function ChatWidget({ context, lowestDimension }: ChatWidgetProps
       });
       const data = await res.json();
 
-      if (data.limitReached) {
-        setLimitReached(true);
-      } else if (data.message) {
+      if (data.message) {
         setMessages((prev) => [
           ...prev,
           { role: "assistant", content: data.message },
         ]);
+      }
+
+      // Show inline booking prompt when suggested by API
+      if (data.suggestBooking) {
+        setShowBookingPrompt(true);
       }
     } catch {
       setMessages((prev) => [
@@ -164,7 +175,7 @@ export default function ChatWidget({ context, lowestDimension }: ChatWidgetProps
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      sendMessage(input);
     }
   }
 
@@ -177,11 +188,12 @@ export default function ChatWidget({ context, lowestDimension }: ChatWidgetProps
           {showTooltip && (
             <div
               className="animate-fade-in flex items-center gap-2 rounded-xl border border-gold/20 bg-bg-card px-4 py-3 shadow-xl"
-              style={{ maxWidth: "260px" }}
+              style={{ maxWidth: "280px" }}
             >
               <MessageCircle size={16} className="shrink-0 text-gold" />
               <p className="text-xs leading-relaxed text-white/80">
-                <strong className="text-gold">Have questions?</strong> Ask our AI advisor about your report results
+                <strong className="text-gold">Questions about your score?</strong>{" "}
+                Ask our AI advisor what your results mean & how to improve
               </p>
               <button
                 onClick={() => setShowTooltip(false)}
@@ -243,54 +255,12 @@ export default function ChatWidget({ context, lowestDimension }: ChatWidgetProps
           {/* Suggested Questions */}
           {messages.length <= 1 && !isLoading && (
             <div className="border-b border-white/5 px-4 py-3">
-              <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted/60">Suggested questions</p>
+              <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted/60">Ask about your results</p>
               <div className="flex flex-wrap gap-1.5">
-                {[
-                  "Why is my sleep score low?",
-                  "What does NAD+ do?",
-                  "Is EBOO worth it for me?",
-                  "How quickly will I see results?",
-                ].map((q) => (
+                {suggestedQuestions.map((q) => (
                   <button
                     key={q}
-                    onClick={() => {
-                      setInput(q);
-                      setTimeout(() => {
-                        const userMsg: ChatMessageType = { role: "user", content: q };
-                        const updated = [...messages, userMsg];
-                        setMessages(updated);
-                        setInput("");
-                        setMessageCount((c) => c + 1);
-                        setIsLoading(true);
-
-                        fetch("/api/chat", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            messages: updated,
-                            context: {
-                              answers: answersRecord,
-                              wellnessScore: context.wellnessScore,
-                              biologicalAge: context.biologicalAge,
-                              treatments: context.treatments,
-                            },
-                          }),
-                        })
-                          .then((r) => r.json())
-                          .then((data) => {
-                            if (data.message) {
-                              setMessages((prev) => [...prev, { role: "assistant", content: data.message }]);
-                            }
-                          })
-                          .catch(() => {
-                            setMessages((prev) => [
-                              ...prev,
-                              { role: "assistant", content: "I'm having trouble connecting. Please try again." },
-                            ]);
-                          })
-                          .finally(() => setIsLoading(false));
-                      }, 50);
-                    }}
+                    onClick={() => sendMessage(q)}
                     className="rounded-lg border border-white/5 bg-bg-card px-3 py-1.5 text-[11px] text-muted transition-colors hover:border-gold/20 hover:text-gold"
                   >
                     {q}
@@ -307,18 +277,21 @@ export default function ChatWidget({ context, lowestDimension }: ChatWidgetProps
             ))}
             {isLoading && <TypingIndicator />}
 
-            {/* Limit reached message */}
-            {limitReached && (
+            {/* Inline Booking Prompt (soft escalation) */}
+            {showBookingPrompt && !isLoading && (
               <div className="animate-fade-in mt-2 rounded-xl border border-gold/15 bg-[rgba(212,168,83,0.06)] p-4 text-center">
                 <p className="text-xs leading-relaxed text-muted">
-                  You&apos;ve reached the chat limit. Book a free consultation to continue the conversation with our team.
+                  Ready to take the next step? A free consultation is the best way to create your personalized treatment plan.
                 </p>
                 <a
-                  href="#book"
+                  href="https://calendly.com/harleystreet-wellness/free-consultation"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => PixelEvents.bookingClick("chat")}
                   className="gold-gradient mt-3 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold text-bg"
                 >
                   <Calendar size={14} />
-                  Book Free Consultation
+                  Book Free Online Consultation
                 </a>
               </div>
             )}
@@ -327,34 +300,27 @@ export default function ChatWidget({ context, lowestDimension }: ChatWidgetProps
           </div>
 
           {/* Input */}
-          {!limitReached && (
-            <div className="border-t border-white/5 px-4 py-3">
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Ask about your results..."
-                  disabled={isLoading}
-                  className="flex-1 rounded-xl border border-white/5 bg-bg-card px-4 py-2.5 text-sm text-white placeholder-muted/50 outline-none transition-colors focus:border-gold/30 disabled:opacity-50"
-                />
-                <button
-                  onClick={handleSend}
-                  disabled={!input.trim() || isLoading}
-                  className="gold-gradient flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all hover:brightness-110 disabled:opacity-30 disabled:hover:brightness-100"
-                  aria-label="Send message"
-                >
-                  <ArrowUp size={18} className="text-bg" />
-                </button>
-              </div>
-              {messageCount > 0 && (
-                <p className="mt-1.5 text-center text-[10px] text-muted/40">
-                  {20 - messageCount} messages remaining
-                </p>
-              )}
+          <div className="border-t border-white/5 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask about your results..."
+                disabled={isLoading}
+                className="flex-1 rounded-xl border border-white/5 bg-bg-card px-4 py-2.5 text-sm text-white placeholder-muted/50 outline-none transition-colors focus:border-gold/30 disabled:opacity-50"
+              />
+              <button
+                onClick={() => sendMessage(input)}
+                disabled={!input.trim() || isLoading}
+                className="gold-gradient flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all hover:brightness-110 disabled:opacity-30 disabled:hover:brightness-100"
+                aria-label="Send message"
+              >
+                <ArrowUp size={18} className="text-bg" />
+              </button>
             </div>
-          )}
+          </div>
         </div>
       )}
     </>

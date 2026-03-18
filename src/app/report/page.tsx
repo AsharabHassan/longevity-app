@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { Building2, Star, Stethoscope, ShieldCheck } from "lucide-react";
+import AnalysisShow from "@/components/report/AnalysisShow";
 import ScoreHero from "@/components/report/ScoreHero";
 import DimensionBars from "@/components/report/DimensionBars";
 import TreatmentPlan from "@/components/report/TreatmentPlan";
@@ -21,42 +23,13 @@ import type {
   ReportData,
 } from "@/lib/types";
 
-/* ---------- Loading Skeleton ---------- */
-function ReportSkeleton() {
-  return (
-    <div className="mx-auto max-w-[640px] space-y-10 px-5 py-12 animate-pulse">
-      {/* Score ring placeholder */}
-      <div className="flex flex-col items-center gap-4">
-        <div className="h-40 w-40 rounded-full border-4 border-white/5" />
-        <div className="h-3 w-48 rounded bg-white/5" />
-      </div>
-      {/* Dimension bars placeholder */}
-      <div className="space-y-4">
-        {Array.from({ length: 9 }).map((_, i) => (
-          <div key={i} className="space-y-2">
-            <div className="flex justify-between">
-              <div className="h-3 w-32 rounded bg-white/5" />
-              <div className="h-3 w-8 rounded bg-white/5" />
-            </div>
-            <div className="h-1 w-full rounded bg-white/5" />
-          </div>
-        ))}
-      </div>
-      {/* Treatment placeholder */}
-      <div className="space-y-3">
-        <div className="h-4 w-40 rounded bg-white/5" />
-        <div className="h-32 w-full rounded-2xl bg-white/5" />
-        <div className="h-20 w-full rounded-2xl bg-white/5" />
-      </div>
-    </div>
-  );
-}
+type ReportPhase = "analyzing" | "complete";
 
 export default function ReportPage() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
+  const [phase, setPhase] = useState<ReportPhase>("analyzing");
   const [reportData, setReportData] = useState<ReportData | null>(null);
-  const [loadingReport, setLoadingReport] = useState(true);
 
   // Computed quiz data
   const [dimensions, setDimensions] = useState<DimensionScore[]>([]);
@@ -67,50 +40,72 @@ export default function ReportPage() {
   const [answers, setAnswers] = useState<QuizAnswer[]>([]);
   const [location, setLocation] = useState("London");
   const [lowestDimension, setLowestDimension] = useState("");
+  const [leadName, setLeadName] = useState("");
+  const [leadEmail, setLeadEmail] = useState("");
+  const [leadPhone, setLeadPhone] = useState("");
   const reportRef = useRef<HTMLDivElement>(null);
 
-  const fetchReport = useCallback(
-    async (
-      ans: QuizAnswer[],
-      dims: DimensionScore[],
-      ws: number,
-      ba: number,
-      ca: number,
-      rec: TreatmentRecommendation
-    ) => {
-      try {
-        // Convert answers array to a record for the Claude API
-        const answersRecord: Record<string, string | string[] | number> = {};
-        for (const a of ans) {
-          answersRecord[a.questionId] = a.value;
-        }
+  // Answers as record for streaming endpoint
+  const [answersRecord, setAnswersRecord] = useState<
+    Record<string, string | string[] | number>
+  >({});
 
-        const res = await fetch("/api/report/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            answers: answersRecord,
-            dimensions: dims.map((d) => ({ name: d.name, score: d.score })),
-            wellnessScore: ws,
-            biologicalAge: ba,
-            chronologicalAge: ca,
-            primaryTreatment: rec.primary.name,
-            supportingTreatments: rec.supporting.map((t) => t.name),
-          }),
-        });
-        const data: ReportData = await res.json();
-        setReportData(data);
-      } catch (err) {
-        console.error("Failed to generate AI report:", err);
-      } finally {
-        setLoadingReport(false);
+  // Handle streaming analysis completion
+  const handleAnalysisComplete = useCallback(
+    (streamedReport: ReportData | null) => {
+      if (streamedReport) {
+        setReportData(streamedReport);
+      }
+      setPhase("complete");
+
+      // If streaming didn't produce a report, fallback to the non-streaming endpoint
+      if (!streamedReport) {
+        fetchReportFallback();
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
+  // Fallback: fetch report from non-streaming endpoint
+  const fetchReportFallback = useCallback(async () => {
+    try {
+      const stored = sessionStorage.getItem("quizResults");
+      if (!stored) return;
+
+      const parsed = JSON.parse(stored);
+      const answersRec: Record<string, string | string[] | number> = {};
+      for (const a of (parsed.answers ?? [])) {
+        if (a.questionId) answersRec[a.questionId] = a.value;
+      }
+
+      const rec = parsed.treatments ?? { primary: null, supporting: [] };
+
+      const res = await fetch("/api/report/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          answers: answersRec,
+          dimensions: (parsed.dimensions ?? []).map(
+            (d: DimensionScore) => ({ name: d.name, score: d.score })
+          ),
+          wellnessScore: parsed.wellnessScore ?? 0,
+          biologicalAge: parsed.biologicalAge ?? 0,
+          chronologicalAge: parsed.chronologicalAge ?? 35,
+          primaryTreatment: rec.primary?.name ?? "NAD+ IV Drip",
+          supportingTreatments: (rec.supporting ?? []).map(
+            (t: { name: string }) => t.name
+          ),
+        }),
+      });
+      const data: ReportData = await res.json();
+      setReportData(data);
+    } catch (err) {
+      console.error("Fallback report generation failed:", err);
+    }
+  }, []);
+
   useEffect(() => {
-    // Read quiz data from sessionStorage (saved by QuizEngine as "quizResults")
     const stored = sessionStorage.getItem("quizResults");
     if (!stored) {
       router.replace("/quiz");
@@ -120,13 +115,15 @@ export default function ReportPage() {
     try {
       const parsed = JSON.parse(stored);
 
-      // QuizEngine pre-calculates everything and stores it
       const quizAnswers: QuizAnswer[] = parsed.answers ?? [];
       const dims: DimensionScore[] = parsed.dimensions ?? [];
       const ws: number = parsed.wellnessScore ?? 0;
       const ba: number = parsed.biologicalAge ?? 0;
       const ca: number = parsed.chronologicalAge ?? 35;
-      const rec: TreatmentRecommendation = parsed.treatments ?? { primary: null, supporting: [] };
+      const rec: TreatmentRecommendation = parsed.treatments ?? {
+        primary: null,
+        supporting: [],
+      };
 
       setAnswers(quizAnswers);
       setChronologicalAge(ca);
@@ -134,11 +131,27 @@ export default function ReportPage() {
       setWellnessScore(ws);
       setBiologicalAge(ba);
 
+      // Build answers record
+      const record: Record<string, string | string[] | number> = {};
+      for (const a of quizAnswers) {
+        if (a.questionId) record[a.questionId] = a.value;
+      }
+      setAnswersRecord(record);
+
+      // Parse lead data
+      if (parsed.lead) {
+        setLeadName(parsed.lead.firstName ?? "");
+        setLeadEmail(parsed.lead.email ?? "");
+        setLeadPhone(parsed.lead.phone ?? "");
+      }
+
       // Determine location from answers
       const locAnswer = quizAnswers.find((a) => a.questionId === "q16");
-      const loc = typeof locAnswer?.value === "string" && locAnswer.value.includes("Glasgow")
-        ? "Glasgow"
-        : "London";
+      const loc =
+        typeof locAnswer?.value === "string" &&
+        locAnswer.value.includes("Glasgow")
+          ? "Glasgow"
+          : "London";
       setLocation(loc);
 
       // Find lowest dimension
@@ -149,58 +162,65 @@ export default function ReportPage() {
       if (rec.primary) {
         setTreatments(rec);
       } else {
-        const symptoms = quizAnswers
-          .find((a) => a.questionId === "q10");
-        const symptomList = Array.isArray(symptoms?.value) ? symptoms.value : [];
+        const symptoms = quizAnswers.find((a) => a.questionId === "q10");
+        const symptomList = Array.isArray(symptoms?.value)
+          ? symptoms.value
+          : [];
         const freshRec = recommendTreatments(dims, symptomList as string[]);
         setTreatments(freshRec);
       }
 
       setReady(true);
-
-      // Fetch AI narratives
-      fetchReport(quizAnswers, dims, ws, ba, ca, rec.primary ? rec : recommendTreatments(dims, []));
     } catch (err) {
       console.error("Failed to parse quiz data:", err);
       router.replace("/quiz");
     }
-  }, [router, fetchReport]);
-
-  const handleDownloadPDF = useCallback(async () => {
-    const element = reportRef.current;
-    if (!element) return;
-
-    const html2pdf = (await import("html2pdf.js")).default;
-
-    html2pdf()
-      .set({
-        margin: [10, 10, 10, 10],
-        filename: "longevity-report.pdf",
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: {
-          scale: 2,
-          backgroundColor: "#0A0A0A",
-          useCORS: true,
-        },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-      })
-      .from(element)
-      .save();
-  }, []);
+  }, [router]);
 
   if (!ready) {
-    return <ReportSkeleton />;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-bg">
+        <div className="text-center">
+          <div className="h-12 w-12 rounded-full border-2 border-gold/20 border-t-gold animate-spin mx-auto" />
+          <p className="mt-4 text-sm text-muted">Preparing your analysis...</p>
+        </div>
+      </div>
+    );
   }
 
+  /* ── Phase 1: Streaming Analysis Show ──────────────── */
+  if (phase === "analyzing") {
+    return (
+      <main className="min-h-screen bg-bg">
+        <AnalysisShow
+          dimensions={dimensions}
+          answers={answersRecord}
+          wellnessScore={wellnessScore}
+          biologicalAge={biologicalAge}
+          chronologicalAge={chronologicalAge}
+          primaryTreatment={treatments?.primary?.name ?? "NAD+ IV Drip"}
+          supportingTreatments={
+            treatments?.supporting?.map((t) => t.name) ?? []
+          }
+          onComplete={handleAnalysisComplete}
+        />
+      </main>
+    );
+  }
+
+  /* ── Phase 2: Full Report ──────────────────────────── */
   const scoreLabel = getScoreLabel(wellnessScore);
   const verdict = reportData?.verdict ?? "";
 
   return (
-    <main className="min-h-screen bg-bg pb-24">
+    <main className="relative min-h-screen bg-bg pb-24">
+      {/* Ambient gradient mesh */}
+      <div className="gradient-mesh" aria-hidden="true" />
+
       <div
         id="report-content"
         ref={reportRef}
-        className="mx-auto max-w-[640px] px-5 py-10"
+        className="relative z-10 mx-auto max-w-[640px] px-5 py-10"
       >
         {/* Score Hero */}
         <ScoreHero
@@ -211,38 +231,109 @@ export default function ReportPage() {
           scoreLabel={scoreLabel}
         />
 
+        {/* Patient Info Bar */}
+        {leadName && (
+          <div className="glass-card mt-6 p-4">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted/60">
+              <div className="flex items-center gap-1.5">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="4.5" r="2.5" stroke="currentColor" strokeWidth="1.2" /><path d="M2 12.5C2 10.5 4.2 9 7 9C9.8 9 12 10.5 12 12.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" /></svg>
+                <span className="text-white/80 font-medium">{leadName}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="3" width="11" height="8.5" rx="1.5" stroke="currentColor" strokeWidth="1.1" /><path d="M1.5 5L7 8.5L12.5 5" stroke="currentColor" strokeWidth="1.1" /></svg>
+                <span>{leadEmail}</span>
+              </div>
+              {leadPhone && (
+                <div className="flex items-center gap-1.5">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 2H5.5L6.5 5L5 6C5.6 7.5 6.5 8.5 8 9L9 7.5L12 8.5V11C12 11.6 11.6 12 11 12C6 12 2 8 2 3C2 2.4 2.4 2 3 2Z" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  <span>{leadPhone}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Clinic Trust Signals */}
+        <div className="glass-card-gold mt-6 p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M8 1L2 4V8C2 12 4.7 15.3 8 16C11.3 15.3 14 12 14 8V4L8 1Z" stroke="#D4A853" strokeWidth="1.2" />
+              <path d="M6 8L7.5 9.5L10.5 6.5" stroke="#D4A853" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span className="text-[10px] font-bold tracking-[2px] text-gold uppercase">Verified Clinic</span>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-start gap-2.5">
+              <Building2 size={16} strokeWidth={1.5} className="text-gold/70 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-[11px] font-semibold text-white/80">Harley Street, London</p>
+                <p className="text-[9px] text-muted/40">Premier medical district</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <Star size={16} strokeWidth={1.5} className="text-gold/70 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-[11px] font-semibold text-white/80">5.0 Rating</p>
+                <p className="text-[9px] text-muted/40">200+ verified reviews</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <Stethoscope size={16} strokeWidth={1.5} className="text-gold/70 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-[11px] font-semibold text-white/80">GMC Registered Doctors</p>
+                <p className="text-[9px] text-muted/40">Fully qualified clinicians</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <ShieldCheck size={16} strokeWidth={1.5} className="text-gold/70 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-[11px] font-semibold text-white/80">CQC Regulated</p>
+                <p className="text-[9px] text-muted/40">Care Quality Commission</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Divider */}
         <div className="my-10 h-px w-full bg-gradient-to-r from-transparent via-white/5 to-transparent" />
 
-        {/* Dimension Bars */}
-        <DimensionBars dimensions={dimensions} />
+        {/* Interactive Dimension Bars */}
+        <DimensionBars
+          dimensions={dimensions}
+          answers={answers}
+          biologicalAge={biologicalAge}
+          recommendedTreatment={treatments?.primary?.name}
+        />
 
         {/* Divider */}
         <div className="my-10 h-px w-full bg-gradient-to-r from-transparent via-white/5 to-transparent" />
 
         {/* Treatment Plan */}
         {treatments && (
-          <>
-            {loadingReport ? (
-              <div className="space-y-3 animate-pulse">
-                <div className="h-4 w-40 rounded bg-white/5" />
-                <div className="h-40 w-full rounded-2xl bg-white/5" />
-              </div>
-            ) : (
-              <TreatmentPlan
-                primary={treatments.primary}
-                supporting={treatments.supporting}
-                reportData={reportData}
-              />
-            )}
-          </>
+          <TreatmentPlan
+            primary={treatments.primary}
+            supporting={treatments.supporting}
+            reportData={reportData}
+          />
         )}
 
         {/* Divider */}
         <div className="my-10 h-px w-full bg-gradient-to-r from-transparent via-white/5 to-transparent" />
 
         {/* Report Actions */}
-        <ReportActions onDownloadPDF={handleDownloadPDF} location={location} />
+        <ReportActions
+          leadName={leadName}
+          leadEmail={leadEmail}
+          leadPhone={leadPhone}
+          location={location}
+          chronologicalAge={chronologicalAge}
+          biologicalAge={biologicalAge}
+          wellnessScore={wellnessScore}
+          dimensions={dimensions}
+          treatments={treatments}
+          reportData={reportData}
+          lowestDimension={lowestDimension}
+        />
       </div>
 
       {/* Chat Widget */}

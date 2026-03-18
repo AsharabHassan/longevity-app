@@ -75,7 +75,8 @@ export const FIXED_QUESTIONS: Question[] = [
     options: [
       { label: "Poor — I wake frequently", score: 0 },
       { label: "Fair — restless nights", score: 1 },
-      { label: "Good — occasional disruptions", score: 3 },
+      { label: "Average — some disruptions", score: 2 },
+      { label: "Good — mostly refreshing", score: 3 },
       { label: "Excellent — I wake refreshed", score: 4 },
     ],
   },
@@ -85,11 +86,10 @@ export const FIXED_QUESTIONS: Question[] = [
     text: "How many days per week do you exercise for 30+ minutes?",
     type: "single",
     options: [
-      { label: "0 days", score: 0 },
-      { label: "1-2 days", score: 1 },
+      { label: "0 days — completely sedentary", score: 0 },
+      { label: "1-2 days", score: 2 },
       { label: "3-4 days", score: 3 },
-      { label: "5-6 days", score: 4 },
-      { label: "Daily", score: 4 },
+      { label: "5+ days", score: 4 },
     ],
   },
   {
@@ -100,8 +100,9 @@ export const FIXED_QUESTIONS: Question[] = [
     options: [
       { label: "Mostly processed / fast food", description: "Convenience-driven eating", score: 0 },
       { label: "Mixed — some healthy, some not", description: "Inconsistent nutrition", score: 1 },
-      { label: "Generally healthy", description: "Whole foods with occasional treats", score: 3 },
-      { label: "Very clean / optimized", description: "Nutrient-dense, intentional eating", score: 4 },
+      { label: "Generally healthy", description: "Whole foods with occasional treats", score: 2 },
+      { label: "Very healthy", description: "Mostly whole foods, balanced macros", score: 3 },
+      { label: "Optimized", description: "Nutrient-dense, intentional eating", score: 4 },
     ],
   },
   {
@@ -148,8 +149,9 @@ export const FIXED_QUESTIONS: Question[] = [
     options: [
       { label: "Yes, significantly worse", score: 0 },
       { label: "Slightly worse", score: 1 },
-      { label: "No change", score: 3 },
-      { label: "Improved", score: 4 },
+      { label: "No change", score: 2 },
+      { label: "Slightly improved", score: 3 },
+      { label: "Significantly improved", score: 4 },
     ],
   },
   {
