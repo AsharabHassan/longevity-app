@@ -51,7 +51,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script
           type="application/ld+json"
@@ -82,6 +82,7 @@ export default function RootLayout({
       </head>
       <body
         className={`${spaceGrotesk.variable} ${inter.variable} bg-bg text-foreground font-body antialiased`}
+        suppressHydrationWarning
       >
         {children}
         <Script id="fb-pixel" strategy="afterInteractive">

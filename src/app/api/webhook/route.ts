@@ -40,7 +40,7 @@ async function sendWebhook(
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { lead, answers, questionsWithAnswers, ...rest } = body;
+    const { lead, questionsWithAnswers } = body;
 
     // Generate unique event ID for deduplication between browser pixel & CAPI
     const eventId = randomUUID();
@@ -49,21 +49,55 @@ export async function POST(req: NextRequest) {
     // Extract client info for CAPI user_data
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "";
     const userAgent = req.headers.get("user-agent") || "";
-    const fbc = body.fbc || ""; // _fbc cookie value from client
-    const fbp = body.fbp || ""; // _fbp cookie value from client
 
-    // Build enriched payload for GHL
+    // Build clean, organized payload for GHL
     const enrichedPayload = {
-      ...rest,
-      lead,
+      // ── Contact Info (top-level for easy GHL mapping) ──
+      firstName: lead?.firstName || "",
+      email: lead?.email || "",
+      phone: lead?.phone || "",
 
-      // Full Q&A with question text
-      questionsWithAnswers: questionsWithAnswers || [],
+      // ── Quiz Source ──
+      source: body.source || "quiz",
 
-      // Raw answers preserved for backward compat
-      answers,
+      // ── Health Assessment Results ──
+      wellnessScore: body.wellnessScore,
+      biologicalAge: body.biologicalAge,
+      chronologicalAge: body.chronologicalAge,
 
-      // ── Meta Conversion API fields ──
+      // ── Health Dimensions ──
+      dimensions: (body.dimensions || []).map(
+        (d: { name: string; score: number; label: string }) => ({
+          name: d.name,
+          score: d.score,
+          label: d.label,
+        })
+      ),
+
+      // ── Treatment Recommendations ──
+      treatments: {
+        primary: body.treatments?.primary?.name || "",
+        primaryPrice: body.treatments?.primary?.price || 0,
+        supporting: (body.treatments?.supporting || []).map(
+          (t: { name: string; price: number }) => t.name
+        ),
+      },
+
+      // ── Quiz Q&A (question text + answer) ──
+      questionsWithAnswers: (questionsWithAnswers || []).map(
+        (qa: { questionText: string; answer: string | string[] | number }) => ({
+          question: qa.questionText,
+          answer: Array.isArray(qa.answer) ? qa.answer.join(", ") : qa.answer,
+        })
+      ),
+
+      // ── Preferred Location ──
+      location:
+        (questionsWithAnswers || []).find(
+          (qa: { questionId: string }) => qa.questionId === "q16"
+        )?.answer || "",
+
+      // ── Meta Conversion API ──
       meta_capi: {
         pixel_id: FB_PIXEL_ID,
         event_name: "Lead",
@@ -77,8 +111,8 @@ export async function POST(req: NextRequest) {
           fn: lead?.firstName ? sha256(lead.firstName) : "",
           client_ip_address: ip,
           client_user_agent: userAgent,
-          fbc,
-          fbp,
+          fbc: body.fbc || "",
+          fbp: body.fbp || "",
         },
       },
     };
