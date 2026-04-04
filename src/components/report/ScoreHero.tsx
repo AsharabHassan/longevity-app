@@ -20,6 +20,8 @@ export default function ScoreHero({
   const [displayScore, setDisplayScore] = useState(0);
   const frameRef = useRef<number>(0);
   const gap = biologicalAge - chronologicalAge;
+  const isYounger = gap < 0;
+  const absGap = Math.abs(gap);
 
   useEffect(() => {
     const duration = 1800;
@@ -164,7 +166,7 @@ export default function ScoreHero({
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" className="opacity-60">
           <path
             d="M5 12H19M19 12L13 6M19 12L13 18"
-            stroke="var(--danger)"
+            stroke={isYounger ? "var(--green, #22c55e)" : "var(--danger)"}
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -172,28 +174,39 @@ export default function ScoreHero({
         </svg>
 
         {/* Body age */}
-        <div className="flex flex-col items-center rounded-2xl border border-danger/15 bg-[rgba(220,53,69,0.06)] backdrop-blur-md px-7 py-4">
+        <div className={`flex flex-col items-center rounded-2xl border backdrop-blur-md px-7 py-4 ${
+          isYounger
+            ? "border-green-500/15 bg-[rgba(34,197,94,0.06)]"
+            : "border-danger/15 bg-[rgba(220,53,69,0.06)]"
+        }`}>
           <span className="text-[9px] font-semibold tracking-[2px] text-muted/60 uppercase">
             Body Age
           </span>
-          <span className="font-heading mt-1 text-3xl font-bold text-danger">
+          <span className={`font-heading mt-1 text-3xl font-bold ${isYounger ? "text-green-500" : "text-danger"}`}>
             {biologicalAge}
           </span>
         </div>
       </div>
 
       {/* Gap Badge */}
-      {gap > 0 && (
+      {absGap > 0 && (
         <div className="mt-5 animate-scale-in">
-          <div className="inline-flex items-center gap-2 rounded-full border border-danger/15 bg-[rgba(220,53,69,0.04)] backdrop-blur-sm px-5 py-2">
-            <span className="text-[11px] text-muted/70">Gap:</span>
-            <span className="font-heading text-base font-bold text-danger">
-              -{gap} years
+          <div className={`inline-flex items-center gap-2 rounded-full border backdrop-blur-sm px-5 py-2 ${
+            isYounger
+              ? "border-green-500/15 bg-[rgba(34,197,94,0.04)]"
+              : "border-danger/15 bg-[rgba(220,53,69,0.04)]"
+          }`}>
+            <span className="text-[11px] text-muted/70">{isYounger ? "Advantage:" : "Gap:"}</span>
+            <span className={`font-heading text-base font-bold ${isYounger ? "text-green-500" : "text-danger"}`}>
+              {isYounger ? `+${absGap} years younger` : `-${absGap} years`}
             </span>
           </div>
           <p className="mt-2 text-center text-[12px] text-muted/60">
-            Your body is aging{" "}
-            <span className="font-semibold text-danger">{gap} years</span> ahead of schedule
+            {isYounger ? (
+              <>Your body is aging{" "}<span className="font-semibold text-green-500">{absGap} years</span> slower than average</>
+            ) : (
+              <>Your body is aging{" "}<span className="font-semibold text-danger">{absGap} years</span> ahead of schedule</>
+            )}
           </p>
         </div>
       )}
@@ -207,7 +220,9 @@ export default function ScoreHero({
             </p>
           </div>
           <p className="mt-3 text-center text-xs text-green-500/70">
-            The good news — at your stage, this gap is fully reversible.
+            {isYounger
+              ? "You're doing well — targeted treatment can extend this advantage even further."
+              : "The good news — at your stage, this gap is fully reversible."}
           </p>
         </div>
       )}

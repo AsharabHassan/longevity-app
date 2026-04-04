@@ -185,7 +185,7 @@ export const FIXED_QUESTIONS: Question[] = [
     text: "Which location is more convenient for you?",
     type: "single",
     options: [
-      { label: "London (Harley Street)", score: 0 },
+      { label: "London (Portpool Lane)", score: 0 },
       { label: "Glasgow", score: 0 },
     ],
   },

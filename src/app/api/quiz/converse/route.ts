@@ -96,7 +96,7 @@ Extract answers for these IDs through natural conversation:
 - q13: Skin changes in past year (0=Significantly worse, 1=Slightly worse, 3=No change, 4=Improved)
 - q14: Energy crashes (0=Constantly, 1=Frequently, 3=Occasionally, 4=Never)
 - q15: IV therapy experience (1=Never, 2=Once or twice, 4=Regular)
-- q16: Preferred location (London (Harley Street) or Glasgow)
+- q16: Preferred location (London (Portpool Lane) or Glasgow)
 
 ## MICRO-REVEAL EXAMPLES (use these as inspiration, personalize to their answers):
 - After age: "At [age], your NAD+ levels have already dropped about [X]% from your peak. That affects everything from energy to DNA repair."

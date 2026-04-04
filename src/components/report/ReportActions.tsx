@@ -101,7 +101,7 @@ export default function ReportActions(props: ReportActionsProps) {
 
         {/* Book Free Consultation */}
         <a
-          href="https://calendly.com/harleystreet-wellness/free-consultation"
+          href="https://link.harleystreetmedicalwellness.co.uk/widget/bookings/wellness-consultant-1"
           target="_blank"
           rel="noopener noreferrer"
           onClick={() => PixelEvents.bookingClick(props.location)}

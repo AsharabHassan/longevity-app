@@ -15,7 +15,7 @@ import {
   calculateBiologicalAge,
 } from "@/lib/scoring";
 import { recommendTreatments } from "@/lib/treatments";
-import { PixelEvents } from "@/lib/pixel";
+import { PixelEvents, getMetaCookies } from "@/lib/pixel";
 
 import ProgressBar from "./ProgressBar";
 import QuestionCard from "./QuestionCard";
@@ -234,6 +234,19 @@ export default function QuizEngine() {
 
       const treatments = recommendTreatments(dimensions, symptoms);
 
+      // Build Q&A with full question text
+      const questionsWithAnswers = answersArray.map((a) => {
+        const q = sequence.find((sq) => sq.id === a.questionId);
+        return {
+          questionId: a.questionId,
+          questionText: q?.text ?? "",
+          answer: a.value,
+          score: a.score,
+        };
+      });
+
+      const { fbc, fbp } = getMetaCookies();
+
       // POST webhook
       await fetch("/api/webhook", {
         method: "POST",
@@ -241,11 +254,15 @@ export default function QuizEngine() {
         body: JSON.stringify({
           lead: data,
           answers: answersArray,
+          questionsWithAnswers,
           wellnessScore,
           biologicalAge,
           chronologicalAge,
           dimensions,
           treatments,
+          fbc,
+          fbp,
+          page_url: window.location.href,
         }),
       }).catch(() => {
         /* webhook failure is non-blocking */

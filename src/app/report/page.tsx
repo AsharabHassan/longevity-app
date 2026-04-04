@@ -2,13 +2,14 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, Star, Stethoscope, ShieldCheck } from "lucide-react";
+import Image from "next/image";
+import { Building2, Star, Stethoscope, Phone } from "lucide-react";
 import AnalysisShow from "@/components/report/AnalysisShow";
 import ScoreHero from "@/components/report/ScoreHero";
 import DimensionBars from "@/components/report/DimensionBars";
 import TreatmentPlan from "@/components/report/TreatmentPlan";
 import ReportActions from "@/components/report/ReportActions";
-import ChatWidget from "@/components/chatbot/ChatWidget";
+import ClinicShowcase from "@/components/report/ClinicShowcase";
 import {
   calculateDimensionScores,
   calculateWellnessScore,
@@ -222,6 +223,16 @@ export default function ReportPage() {
         ref={reportRef}
         className="relative z-10 mx-auto max-w-[640px] px-5 py-10"
       >
+        {/* Logo */}
+        <div className="flex justify-center mb-6">
+          <Image
+            src="/logo.png"
+            alt="Harley Street Wellness"
+            width={100}
+            height={100}
+          />
+        </div>
+
         {/* Score Hero */}
         <ScoreHero
           wellnessScore={wellnessScore}
@@ -266,8 +277,8 @@ export default function ReportPage() {
             <div className="flex items-start gap-2.5">
               <Building2 size={16} strokeWidth={1.5} className="text-gold/70 mt-0.5 shrink-0" />
               <div>
-                <p className="text-[11px] font-semibold text-white/80">Harley Street, London</p>
-                <p className="text-[9px] text-muted/40">Premier medical district</p>
+                <p className="text-[11px] font-semibold text-white/80">1-5 Portpool Lane, London</p>
+                <p className="text-[9px] text-muted/40">EC1N 7UU</p>
               </div>
             </div>
             <div className="flex items-start gap-2.5">
@@ -285,10 +296,10 @@ export default function ReportPage() {
               </div>
             </div>
             <div className="flex items-start gap-2.5">
-              <ShieldCheck size={16} strokeWidth={1.5} className="text-gold/70 mt-0.5 shrink-0" />
+              <Phone size={16} strokeWidth={1.5} className="text-gold/70 mt-0.5 shrink-0" />
               <div>
-                <p className="text-[11px] font-semibold text-white/80">CQC Regulated</p>
-                <p className="text-[9px] text-muted/40">Care Quality Commission</p>
+                <p className="text-[11px] font-semibold text-white/80">020 4628 3137</p>
+                <p className="text-[9px] text-muted/40">hello@harleystreetwellness.co.uk</p>
               </div>
             </div>
           </div>
@@ -302,6 +313,7 @@ export default function ReportPage() {
           dimensions={dimensions}
           answers={answers}
           biologicalAge={biologicalAge}
+          chronologicalAge={chronologicalAge}
           recommendedTreatment={treatments?.primary?.name}
         />
 
@@ -316,6 +328,12 @@ export default function ReportPage() {
             reportData={reportData}
           />
         )}
+
+        {/* Divider */}
+        <div className="my-10 h-px w-full bg-gradient-to-r from-transparent via-white/5 to-transparent" />
+
+        {/* Clinic Showcase: Hero, Video, Reviews */}
+        <ClinicShowcase />
 
         {/* Divider */}
         <div className="my-10 h-px w-full bg-gradient-to-r from-transparent via-white/5 to-transparent" />
@@ -336,21 +354,6 @@ export default function ReportPage() {
         />
       </div>
 
-      {/* Chat Widget */}
-      <ChatWidget
-        context={{
-          answers,
-          wellnessScore,
-          biologicalAge,
-          treatments: treatments
-            ? [
-                treatments.primary.name,
-                ...treatments.supporting.map((t) => t.name),
-              ]
-            : [],
-        }}
-        lowestDimension={lowestDimension}
-      />
     </main>
   );
 }

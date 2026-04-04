@@ -1,6 +1,6 @@
 "use client";
 
-import { Lock, Shield, Cpu, Award, BadgeCheck } from "lucide-react";
+import { Lock, Shield, Cpu, Award } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 interface TrustItemProps {
@@ -22,7 +22,6 @@ const items: TrustItemProps[] = [
   { icon: Shield, text: "GDPR Compliant" },
   { icon: Cpu, text: "AI-Powered Analysis" },
   { icon: Award, text: "GMC Registered" },
-  { icon: BadgeCheck, text: "CQC Regulated" },
 ];
 
 export default function TrustBar() {

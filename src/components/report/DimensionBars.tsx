@@ -69,6 +69,7 @@ interface DimensionBarsProps {
   dimensions: DimensionScore[];
   answers?: QuizAnswer[];
   biologicalAge?: number;
+  chronologicalAge?: number;
   recommendedTreatment?: string;
 }
 
@@ -76,6 +77,7 @@ export default function DimensionBars({
   dimensions,
   answers,
   biologicalAge,
+  chronologicalAge,
   recommendedTreatment,
 }: DimensionBarsProps) {
   const [expandedDim, setExpandedDim] = useState<string | null>(null);
@@ -138,15 +140,20 @@ export default function DimensionBars({
     [expandedDim, fetchDeepDive]
   );
 
+  const isYounger = (biologicalAge ?? 0) < (chronologicalAge ?? 100);
+  const absGap = Math.abs((biologicalAge ?? 0) - (chronologicalAge ?? 0));
+
   return (
     <div className="animate-fade-in space-y-4">
       {/* Section Header */}
       <div className="mb-6 text-center">
         <h2 className="font-heading text-xl font-bold tracking-wide text-glow">
-          Your Time Thieves
+          {isYounger ? "Your Optimization Map" : "Your Time Thieves"}
         </h2>
         <p className="text-xs text-muted/50 mt-1">
-          What&apos;s silently stealing years from your life
+          {isYounger
+            ? "Where you're excelling and where you can push further"
+            : "What\u0027s silently stealing years from your life"}
         </p>
       </div>
 
@@ -154,17 +161,17 @@ export default function DimensionBars({
       <div className="glass-card p-5 mb-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-danger/10">
-              <Clock size={18} className="text-danger" />
+            <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${isYounger ? "bg-green-500/10" : "bg-danger/10"}`}>
+              <Clock size={18} className={isYounger ? "text-green-500" : "text-danger"} />
             </div>
-            <span className="text-sm text-muted/80">Total Time Lost</span>
+            <span className="text-sm text-muted/80">{isYounger ? "Total Time Gained" : "Total Time Lost"}</span>
           </div>
-          <span className="font-heading text-xl font-bold text-danger">
-            -{Math.round(totalYearsStolen * 10) / 10} years
+          <span className={`font-heading text-xl font-bold ${isYounger ? "text-green-500" : "text-danger"}`}>
+            {isYounger ? `+${absGap} years` : `-${Math.round(totalYearsStolen * 10) / 10} years`}
           </span>
         </div>
         <div className="mt-3 flex items-center justify-between rounded-xl bg-green-500/5 px-4 py-2.5">
-          <span className="text-xs text-muted/60">Recovery Potential</span>
+          <span className="text-xs text-muted/60">{isYounger ? "Further Optimization" : "Recovery Potential"}</span>
           <span className="text-sm font-semibold text-green-500">
             +{totalRecoverable} years with treatment
           </span>

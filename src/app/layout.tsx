@@ -25,6 +25,10 @@ export const metadata: Metadata = {
     "NAD+ IV drip London",
     "EBOO therapy UK",
   ],
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
   openGraph: {
     title: "Discover Your Biological Age | Harley Street Medical Wellness",
     description:
@@ -46,8 +50,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const fbPixelId = process.env.NEXT_PUBLIC_FB_PIXEL_ID;
-
   return (
     <html lang="en">
       <head>
@@ -64,19 +66,15 @@ export default function RootLayout({
                 "@type": "MedicalOrganization",
                 name: "Harley Street Medical Wellness",
                 url: "https://harleystreetmedicalwellness.co.uk",
-                address: [
-                  {
+                address: {
                     "@type": "PostalAddress",
+                    streetAddress: "1-5 Portpool Lane",
                     addressLocality: "London",
-                    streetAddress: "Harley Street",
+                    postalCode: "EC1N 7UU",
                     addressCountry: "GB",
                   },
-                  {
-                    "@type": "PostalAddress",
-                    addressLocality: "Glasgow",
-                    addressCountry: "GB",
-                  },
-                ],
+                  telephone: "+442046283137",
+                  email: "hello@harleystreetwellness.co.uk",
               },
             }),
           }}
@@ -86,22 +84,29 @@ export default function RootLayout({
         className={`${spaceGrotesk.variable} ${inter.variable} bg-bg text-foreground font-body antialiased`}
       >
         {children}
-        {fbPixelId && (
-          <Script id="fb-pixel" strategy="afterInteractive">
-            {`
-              !function(f,b,e,v,n,t,s)
-              {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-              n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-              if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-              n.queue=[];t=b.createElement(e);t.async=!0;
-              t.src=v;s=b.getElementsByTagName(e)[0];
-              s.parentNode.insertBefore(t,s)}(window, document,'script',
-              'https://connect.facebook.net/en_US/fbevents.js');
-              fbq('init', '${fbPixelId}');
-              fbq('track', 'PageView');
-            `}
-          </Script>
-        )}
+        <Script id="fb-pixel" strategy="afterInteractive">
+          {`
+            !function(f,b,e,v,n,t,s)
+            {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+            n.queue=[];t=b.createElement(e);t.async=!0;
+            t.src=v;s=b.getElementsByTagName(e)[0];
+            s.parentNode.insertBefore(t,s)}(window, document,'script',
+            'https://connect.facebook.net/en_US/fbevents.js');
+            fbq('init', '779250835012098');
+            fbq('track', 'PageView');
+          `}
+        </Script>
+        <noscript>
+          <img
+            height="1"
+            width="1"
+            style={{ display: "none" }}
+            src="https://www.facebook.com/tr?id=779250835012098&ev=PageView&noscript=1"
+            alt=""
+          />
+        </noscript>
       </body>
     </html>
   );

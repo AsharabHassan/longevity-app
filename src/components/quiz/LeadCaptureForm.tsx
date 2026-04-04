@@ -173,7 +173,7 @@ export default function LeadCaptureForm({ onSubmit, isSubmitting }: LeadCaptureF
         </div>
         <div className="flex items-center gap-1.5">
           <Award size={13} className="text-gold" />
-          <span className="text-[10px] text-muted">Harley Street certified</span>
+          <span className="text-[10px] text-muted">GMC Registered</span>
         </div>
       </div>
     </div>

@@ -260,7 +260,7 @@ export default function LongevityPDF({
           <Text style={styles.brandName}>HARLEY STREET WELLNESS</Text>
           <View>
             <Text style={styles.headerRight}>{currentDate}</Text>
-            <Text style={styles.headerRight}>London &middot; Glasgow</Text>
+            <Text style={styles.headerRight}>1-5 Portpool Lane, London EC1N 7UU</Text>
           </View>
         </View>
 
@@ -412,7 +412,7 @@ export default function LongevityPDF({
             Ready to start your recovery?
           </Text>
           <Text style={styles.narrativeText}>
-            Book your free online consultation at calendly.com/harleystreet-wellness/free-consultation
+            Book your free online consultation at link.harleystreetmedicalwellness.co.uk/widget/bookings/wellness-consultant-1
           </Text>
         </View>
 

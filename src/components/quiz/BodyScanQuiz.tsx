@@ -12,7 +12,7 @@ import {
   calculateBiologicalAge,
 } from "@/lib/scoring";
 import { recommendTreatments } from "@/lib/treatments";
-import { PixelEvents } from "@/lib/pixel";
+import { PixelEvents, getMetaCookies } from "@/lib/pixel";
 
 // ── Premium SVG Icons for each zone ──────────────────────
 function BrainIcon({ size = 32, color = "#8B5CF6" }: { size?: number; color?: string }) {
@@ -520,6 +520,19 @@ export default function BodyScanQuiz() {
         const symptoms = Array.isArray(symptomsAnswer?.value) ? symptomsAnswer.value : [];
         const treatments = recommendTreatments(dimensions, symptoms as string[]);
 
+        // Build Q&A with full question text
+        const questionsWithAnswers = answersArray.map((a) => {
+          const q = FIXED_QUESTIONS.find((fq) => fq.id === a.questionId);
+          return {
+            questionId: a.questionId,
+            questionText: q?.text ?? "",
+            answer: a.value,
+            score: a.score,
+          };
+        });
+
+        const { fbc, fbp } = getMetaCookies();
+
         // Webhook
         await fetch("/api/webhook", {
           method: "POST",
@@ -527,12 +540,16 @@ export default function BodyScanQuiz() {
           body: JSON.stringify({
             lead: leadData,
             answers: answersArray,
+            questionsWithAnswers,
             wellnessScore,
             biologicalAge,
             chronologicalAge,
             dimensions,
             treatments,
             source: "body-scan",
+            fbc,
+            fbp,
+            page_url: window.location.href,
           }),
         }).catch(() => {});
 
@@ -796,7 +813,7 @@ export default function BodyScanQuiz() {
 
             {/* Location */}
             <div className="flex gap-2 pt-1">
-              {["London (Harley Street)", "Glasgow"].map((loc) => (
+              {["London (Portpool Lane)", "Glasgow"].map((loc) => (
                 <button
                   key={loc}
                   type="button"

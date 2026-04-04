@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Lock, ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -144,11 +145,15 @@ export default function Hero() {
       <Particles />
 
       {/* Clinic branding */}
-      <div className="mb-8 flex items-center gap-3 animate-fade-in" style={{ animationDelay: "0.1s" }}>
-        <ClinicLogo />
-        <span className="font-heading text-[11px] font-medium tracking-[3px] text-gold/80">
-          HARLEY STREET WELLNESS
-        </span>
+      <div className="mb-8 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+        <Image
+          src="/logo.png"
+          alt="Harley Street Wellness"
+          width={140}
+          height={140}
+          className="mx-auto"
+          priority
+        />
       </div>
 
       {/* Live scan counter */}

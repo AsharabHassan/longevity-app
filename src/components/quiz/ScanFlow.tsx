@@ -12,7 +12,7 @@ import {
   calculateBiologicalAge,
 } from "@/lib/scoring";
 import { recommendTreatments } from "@/lib/treatments";
-import { PixelEvents } from "@/lib/pixel";
+import { PixelEvents, getMetaCookies } from "@/lib/pixel";
 
 // ── Micro-reveals injected after specific questions ──────
 const MICRO_REVEALS: Record<string, { title: string; text: string }> = {
@@ -235,18 +235,35 @@ export default function ScanFlow() {
         const symptoms = Array.isArray(symptomsAnswer?.value) ? symptomsAnswer.value : [];
         const treatments = recommendTreatments(dimensions, symptoms as string[]);
 
+        // Build Q&A with full question text
+        const questionsWithAnswers = answersArray.map((a) => {
+          const q = QUIZ_SEQUENCE.find((sq) => sq.id === a.questionId);
+          return {
+            questionId: a.questionId,
+            questionText: q?.text ?? "",
+            answer: a.value,
+            score: a.score,
+          };
+        });
+
+        const { fbc, fbp } = getMetaCookies();
+
         await fetch("/api/webhook", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             lead: leadData,
             answers: answersArray,
+            questionsWithAnswers,
             wellnessScore,
             biologicalAge,
             chronologicalAge,
             dimensions,
             treatments,
             source: "scan-flow",
+            fbc,
+            fbp,
+            page_url: window.location.href,
           }),
         }).catch(() => {});
 

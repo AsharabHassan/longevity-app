@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
     pdf.setFontSize(9);
     setColor(pdf, MUTED);
     pdf.text(currentDate, pageW - margin, 18, { align: "right" });
-    pdf.text("London · Glasgow", pageW - margin, 23, { align: "right" });
+    pdf.text("1-5 Portpool Lane, London EC1N 7UU", pageW - margin, 23, { align: "right" });
 
     // Divider
     setDraw(pdf, BORDER);
@@ -428,62 +428,112 @@ export async function POST(req: NextRequest) {
         pdf.text("Clinical Timeline", margin, y + 5);
         y += 14;
 
-        // Parse timeline text into phases (split by newlines, periods, or numbered items)
+        // Parse timeline text into phases
+        // The AI returns: "Month 1: ... → Month 2: ... → Month 3: ..."
+        // Split on → first, then try newlines, then "Month/Week/Phase N:" patterns
         const rawTimeline = reportData.treatmentPlan.timeline;
-        const phases = rawTimeline
-          .split(/(?:\n|(?:\.\s)|\d+\.\s)/)
-          .map((s: string) => s.trim())
-          .filter((s: string) => s.length > 10);
+        let phases: string[];
 
-        // If we couldn't split into phases, treat as one block
-        const timelinePhases = phases.length > 1 ? phases : [rawTimeline];
-
-        const phaseLabels = ["PHASE 1", "PHASE 2", "PHASE 3", "PHASE 4", "PHASE 5"];
-        const dotX = margin + 8;
-        const textX = margin + 20;
-        const maxTextW = contentW - 24;
-
-        // Background card for entire timeline
-        let totalH = 12;
-        const phaseMeasurements: { lines: string[]; h: number }[] = [];
-        for (const phase of timelinePhases) {
-          const lines = wrapText(pdf, phase, maxTextW);
-          const h = 8 + lines.length * 4.5;
-          phaseMeasurements.push({ lines, h });
-          totalH += h + 4;
+        if (rawTimeline.includes("→")) {
+          phases = rawTimeline.split("→").map((s: string) => s.trim()).filter((s: string) => s.length > 3);
+        } else if (rawTimeline.includes("\n")) {
+          phases = rawTimeline.split("\n").map((s: string) => s.trim()).filter((s: string) => s.length > 3);
+        } else {
+          // Try splitting on "Month N:" or "Week N:" or "Phase N:" patterns
+          const monthSplit = rawTimeline.split(/(?=(?:[Mm]onth|[Ww]eek|[Pp]hase)\s+\d+\s*:)/).map((s: string) => s.trim()).filter((s: string) => s.length > 3);
+          phases = monthSplit.length > 1 ? monthSplit : [rawTimeline];
         }
 
-        drawRect(pdf, margin, y, contentW, totalH, BG_CARD, BORDER);
-        let ty = y + 8;
+        const timelinePhases = phases.length > 0 ? phases : [rawTimeline];
 
-        timelinePhases.forEach((phase: string, idx: number) => {
-          const { lines, h } = phaseMeasurements[idx];
+        // Extract phase label from content, or generate one
+        const extractLabel = (text: string, idx: number): { label: string; body: string } => {
+          // Try matching "Month 1:", "Week 2:", "Phase 3:", etc. at the start
+          const match = text.match(/^((?:[Mm]onth|[Ww]eek|[Pp]hase)\s+\d+)\s*:\s*([\s\S]*)/);
+          if (match) {
+            return { label: match[1].toUpperCase(), body: match[2].trim() };
+          }
+          return { label: `PHASE ${idx + 1}`, body: text };
+        };
+
+        const dotX = margin + 8;
+        const textX = margin + 22;
+        const maxTextW = contentW - 28;
+        const phaseGap = 6;
+        const phasePadTop = 5;
+        const phasePadBottom = 5;
+        const labelToTextGap = 5;
+
+        // Pre-measure all phases
+        const phaseMeasurements: { label: string; body: string; lines: string[]; phaseH: number }[] = [];
+        for (let i = 0; i < timelinePhases.length; i++) {
+          const { label, body } = extractLabel(timelinePhases[i], i);
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(9);
+          const lines = wrapText(pdf, body, maxTextW);
+          const phaseH = phasePadTop + 4 + labelToTextGap + lines.length * 4.2 + phasePadBottom;
+          phaseMeasurements.push({ label, body, lines, phaseH });
+        }
+
+        // Calculate total card height
+        const cardPadding = 10;
+        let totalH = cardPadding * 2;
+        for (let i = 0; i < phaseMeasurements.length; i++) {
+          totalH += phaseMeasurements[i].phaseH;
+          if (i < phaseMeasurements.length - 1) totalH += phaseGap;
+        }
+
+        // Check if entire timeline fits on current page, if not start new page
+        if (y + totalH > pageH - 25) {
+          pdf.addPage();
+          setFill(pdf, BG);
+          pdf.rect(0, 0, pageW, pageH, "F");
+          y = margin;
+
+          // Re-draw section header on new page
+          pdf.setFont("helvetica", "bold");
+          pdf.setFontSize(13);
+          setColor(pdf, GOLD);
+          pdf.text("Clinical Timeline", margin, y + 5);
+          y += 14;
+        }
+
+        // Background card
+        drawRect(pdf, margin, y, contentW, totalH, BG_CARD, BORDER);
+
+        let ty = y + cardPadding;
+
+        for (let idx = 0; idx < phaseMeasurements.length; idx++) {
+          const { label, lines, phaseH } = phaseMeasurements[idx];
+          const dotCenterY = ty + phasePadTop + 2;
 
           // Gold dot (milestone marker)
           setFill(pdf, GOLD);
-          pdf.circle(dotX, ty + 3, 2.5, "F");
+          pdf.circle(dotX, dotCenterY, 2.5, "F");
 
           // Connecting line to next phase
-          if (idx < timelinePhases.length - 1) {
+          if (idx < phaseMeasurements.length - 1) {
+            const lineStartY = dotCenterY + 3;
+            const lineEndY = ty + phaseH + phaseGap - 2;
             setDraw(pdf, "#333333");
             pdf.setLineWidth(0.5);
-            pdf.line(dotX, ty + 6, dotX, ty + h + 2);
+            pdf.line(dotX, lineStartY, dotX, lineEndY);
           }
 
-          // Phase label
+          // Phase label (e.g. "MONTH 1", "PHASE 2")
           pdf.setFont("helvetica", "bold");
-          pdf.setFontSize(7);
+          pdf.setFontSize(7.5);
           setColor(pdf, GOLD);
-          pdf.text(phaseLabels[idx] || `PHASE ${idx + 1}`, textX, ty + 2);
+          pdf.text(label, textX, ty + phasePadTop + 3);
 
-          // Phase text
+          // Phase body text
           pdf.setFont("helvetica", "normal");
           pdf.setFontSize(9);
           setColor(pdf, WHITE);
-          pdf.text(lines, textX, ty + 7);
+          pdf.text(lines, textX, ty + phasePadTop + 3 + labelToTextGap);
 
-          ty += h + 4;
-        });
+          ty += phaseH + phaseGap;
+        }
 
         y += totalH + 10;
       }
@@ -534,7 +584,7 @@ export async function POST(req: NextRequest) {
     pdf.text(btnText, btnX + (btnW - btnTextW) / 2, btnY + 9.5);
 
     // Clickable link annotation over the button area
-    const bookingUrl = "https://calendly.com/harleystreet-wellness/free-consultation";
+    const bookingUrl = "https://link.harleystreetmedicalwellness.co.uk/widget/bookings/wellness-consultant-1";
     pdf.link(btnX, btnY, btnW, btnH, { url: bookingUrl });
 
     y += btnH + 8;
@@ -543,7 +593,7 @@ export async function POST(req: NextRequest) {
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(8);
     setColor(pdf, "#666666");
-    const trustText = "Harley Street, London  ·  GMC Registered  ·  CQC Regulated  ·  5.0 Rating (200+ reviews)";
+    const trustText = "1-5 Portpool Lane, London EC1N 7UU  ·  GMC Registered  ·  5.0 Rating (200+ reviews)";
     const trustW = pdf.getTextWidth(trustText);
     pdf.text(trustText, margin + (contentW - trustW) / 2, y + 3);
 

@@ -10,7 +10,8 @@ import {
   calculateBiologicalAge,
 } from "@/lib/scoring";
 import { recommendTreatments } from "@/lib/treatments";
-import { PixelEvents } from "@/lib/pixel";
+import { PixelEvents, getMetaCookies } from "@/lib/pixel";
+import { FIXED_QUESTIONS } from "@/lib/questions";
 
 interface ConvoMessage {
   role: "user" | "assistant";
@@ -311,6 +312,19 @@ export default function ConversationalQuiz() {
 
       const treatments = recommendTreatments(dimensions, symptoms as string[]);
 
+      // Build Q&A with full question text
+      const questionsWithAnswers = answersArray.map((a) => {
+        const q = FIXED_QUESTIONS.find((fq) => fq.id === a.questionId);
+        return {
+          questionId: a.questionId,
+          questionText: q?.text ?? a.questionId,
+          answer: a.value,
+          score: a.score,
+        };
+      });
+
+      const { fbc, fbp } = getMetaCookies();
+
       // Webhook
       await fetch("/api/webhook", {
         method: "POST",
@@ -318,12 +332,16 @@ export default function ConversationalQuiz() {
         body: JSON.stringify({
           lead: leadData,
           answers: answersArray,
+          questionsWithAnswers,
           wellnessScore,
           biologicalAge,
           chronologicalAge,
           dimensions,
           treatments,
           source: "conversational",
+          fbc,
+          fbp,
+          page_url: window.location.href,
         }),
       }).catch(() => {});
 

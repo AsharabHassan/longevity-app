@@ -202,9 +202,155 @@ export default function TreatmentPlan({
         })}
       </div>
 
+      {/* ═══ Metabolic Health Program ═══ */}
+      <div className="glass-card overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-gold/10 via-gold/5 to-transparent px-6 py-5 border-b border-white/5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/15 border border-gold/20">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2L3 7V12C3 17.55 6.84 22.74 12 24C17.16 22.74 21 17.55 21 12V7L12 2Z" stroke="#D4A853" strokeWidth="1.5" fill="rgba(212,168,83,0.1)" />
+                <path d="M9 12L11 14L15 10" stroke="#D4A853" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="font-heading text-lg font-bold text-white">
+                Metabolic Health Program
+              </h3>
+              <p className="text-[11px] text-muted/50">
+                Your complete longevity protocol — personalised to your results
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Program Items */}
+        <div className="divide-y divide-white/[0.04]">
+          {[
+            {
+              title: "Diagnostic Testing",
+              desc: "Comprehensive blood panels, hormone profiles, and metabolic markers to establish your baseline",
+              svg: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="5" r="3" stroke="#D4A853" strokeWidth="1.4" />
+                  <line x1="12" y1="8" x2="12" y2="16" stroke="#D4A853" strokeWidth="1.4" strokeLinecap="round" />
+                  <line x1="8" y1="12" x2="16" y2="12" stroke="#D4A853" strokeWidth="1.4" strokeLinecap="round" />
+                  <path d="M7 16H17" stroke="#D4A853" strokeWidth="1.4" strokeLinecap="round" />
+                  <path d="M9 16V20C9 20.55 9.45 21 10 21H14C14.55 21 15 20.55 15 20V16" stroke="#D4A853" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                  <circle cx="12" cy="5" r="1" fill="#D4A853" opacity="0.3" />
+                </svg>
+              ),
+            },
+            {
+              title: "Nutritional Counselling",
+              desc: "Personalised dietary strategies aligned with your metabolic profile and longevity goals",
+              svg: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 2C12 2 8 6 8 10C8 12.21 9.79 14 12 14C14.21 14 16 12.21 16 10C16 6 12 2 12 2Z" stroke="#D4A853" strokeWidth="1.4" fill="rgba(212,168,83,0.08)" strokeLinejoin="round" />
+                  <line x1="12" y1="14" x2="12" y2="22" stroke="#D4A853" strokeWidth="1.4" strokeLinecap="round" />
+                  <path d="M9 19H15" stroke="#D4A853" strokeWidth="1.4" strokeLinecap="round" />
+                  <path d="M12 6V10" stroke="#D4A853" strokeWidth="1" strokeLinecap="round" opacity="0.4" />
+                </svg>
+              ),
+            },
+            {
+              title: "Supplement Protocols",
+              desc: "Evidence-based supplement stacks targeting your specific deficiencies and cellular needs",
+              svg: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <rect x="7" y="3" width="10" height="18" rx="5" stroke="#D4A853" strokeWidth="1.4" />
+                  <line x1="7" y1="12" x2="17" y2="12" stroke="#D4A853" strokeWidth="1.4" />
+                  <rect x="7" y="12" width="10" height="9" rx="5" fill="rgba(212,168,83,0.12)" />
+                  <circle cx="12" cy="8" r="1" fill="#D4A853" opacity="0.4" />
+                  <circle cx="10.5" cy="16" r="0.8" fill="#D4A853" opacity="0.3" />
+                  <circle cx="13.5" cy="17" r="0.8" fill="#D4A853" opacity="0.3" />
+                </svg>
+              ),
+            },
+            {
+              title: "Peptide Therapy",
+              desc: "Targeted peptide protocols for tissue repair, immune modulation, and cellular regeneration",
+              svg: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <path d="M6 3C6 3 8 7 8 12C8 17 6 21 6 21" stroke="#D4A853" strokeWidth="1.4" strokeLinecap="round" />
+                  <path d="M12 3C12 3 10 7 10 12C10 17 12 21 12 21" stroke="#D4A853" strokeWidth="1.4" strokeLinecap="round" />
+                  <path d="M12 3C12 3 14 7 14 12C14 17 12 21 12 21" stroke="#D4A853" strokeWidth="1.4" strokeLinecap="round" />
+                  <path d="M18 3C18 3 16 7 16 12C16 17 18 21 18 21" stroke="#D4A853" strokeWidth="1.4" strokeLinecap="round" />
+                  <line x1="5" y1="8" x2="19" y2="8" stroke="#D4A853" strokeWidth="1" opacity="0.3" />
+                  <line x1="5" y1="16" x2="19" y2="16" stroke="#D4A853" strokeWidth="1" opacity="0.3" />
+                  <circle cx="12" cy="12" r="1.5" fill="#D4A853" opacity="0.2" />
+                </svg>
+              ),
+            },
+            {
+              title: "IV Therapies",
+              desc: "Clinical-grade IV infusions including NAD+, Glutathione, and custom vitamin cocktails",
+              svg: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <rect x="8" y="1" width="8" height="12" rx="2" stroke="#D4A853" strokeWidth="1.4" />
+                  <rect x="8" y="6" width="8" height="7" rx="0" fill="rgba(212,168,83,0.12)" />
+                  <line x1="12" y1="13" x2="12" y2="17" stroke="#D4A853" strokeWidth="1.4" strokeLinecap="round" />
+                  <path d="M10 17L12 17L14 17" stroke="#D4A853" strokeWidth="1.4" strokeLinecap="round" />
+                  <path d="M12 17V21" stroke="#D4A853" strokeWidth="1.4" strokeLinecap="round" strokeDasharray="2 2" />
+                  <circle cx="12" cy="22" r="1" fill="#D4A853" opacity="0.4" />
+                  <line x1="10" y1="4" x2="14" y2="4" stroke="#D4A853" strokeWidth="1" opacity="0.3" />
+                </svg>
+              ),
+            },
+            {
+              title: "Advanced Treatments",
+              desc: "EBOO (Extracorporeal Blood Oxygenation & Ozonation), ozone therapy, and cutting-edge longevity interventions",
+              svg: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="9" stroke="#D4A853" strokeWidth="1.4" />
+                  <circle cx="12" cy="12" r="4" stroke="#D4A853" strokeWidth="1.2" fill="rgba(212,168,83,0.08)" />
+                  <circle cx="12" cy="12" r="1.5" fill="#D4A853" opacity="0.4" />
+                  <line x1="12" y1="3" x2="12" y2="6" stroke="#D4A853" strokeWidth="1.2" strokeLinecap="round" />
+                  <line x1="12" y1="18" x2="12" y2="21" stroke="#D4A853" strokeWidth="1.2" strokeLinecap="round" />
+                  <line x1="3" y1="12" x2="6" y2="12" stroke="#D4A853" strokeWidth="1.2" strokeLinecap="round" />
+                  <line x1="18" y1="12" x2="21" y2="12" stroke="#D4A853" strokeWidth="1.2" strokeLinecap="round" />
+                  <line x1="5.6" y1="5.6" x2="7.8" y2="7.8" stroke="#D4A853" strokeWidth="1" strokeLinecap="round" opacity="0.5" />
+                  <line x1="16.2" y1="16.2" x2="18.4" y2="18.4" stroke="#D4A853" strokeWidth="1" strokeLinecap="round" opacity="0.5" />
+                  <line x1="18.4" y1="5.6" x2="16.2" y2="7.8" stroke="#D4A853" strokeWidth="1" strokeLinecap="round" opacity="0.5" />
+                  <line x1="7.8" y1="16.2" x2="5.6" y2="18.4" stroke="#D4A853" strokeWidth="1" strokeLinecap="round" opacity="0.5" />
+                </svg>
+              ),
+            },
+          ].map((item, i) => (
+            <div
+              key={item.title}
+              className="flex items-start gap-4 px-6 py-4 transition-colors hover:bg-white/[0.02] animate-fade-in"
+              style={{ animationDelay: `${0.1 + i * 0.08}s` }}
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/[0.06] border border-gold/10 shrink-0 mt-0.5">
+                {item.svg}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h4 className="text-sm font-semibold text-white/90">{item.title}</h4>
+                <p className="text-[11px] leading-relaxed text-muted/50 mt-0.5">
+                  {item.desc}
+                </p>
+              </div>
+              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gold/10 shrink-0 mt-1.5">
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                  <path d="M2 5L4 7L8 3" stroke="#D4A853" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 bg-white/[0.01] border-t border-white/[0.04]">
+          <p className="text-[11px] text-center text-muted/40">
+            All protocols are administered by GMC-registered doctors at our Portpool Lane clinic
+          </p>
+        </div>
+      </div>
+
       {/* ═══ CTA Button ═══ */}
       <a
-        href="https://calendly.com/harleystreet-wellness/free-consultation"
+        href="https://link.harleystreetmedicalwellness.co.uk/widget/bookings/wellness-consultant-1"
         target="_blank"
         rel="noopener noreferrer"
         className="gold-gradient animate-glow-breathe group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl px-6 py-4.5 font-heading text-[15px] font-bold tracking-[1.5px] text-bg transition-all hover:scale-[1.02] active:scale-[0.98]"
