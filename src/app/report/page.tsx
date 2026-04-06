@@ -24,7 +24,16 @@ import type {
   ReportData,
 } from "@/lib/types";
 
+interface DeepDiveData {
+  mechanism: string;
+  agingImpact: string;
+  treatmentConnection: string;
+  timeline: string;
+}
+
 type ReportPhase = "analyzing" | "complete";
+
+const DEEP_DIVE_STORAGE_KEY = "deepDives";
 
 export default function ReportPage() {
   const router = useRouter();
@@ -44,12 +53,92 @@ export default function ReportPage() {
   const [leadName, setLeadName] = useState("");
   const [leadEmail, setLeadEmail] = useState("");
   const [leadPhone, setLeadPhone] = useState("");
+  const [deepDives, setDeepDives] = useState<Record<string, DeepDiveData>>({});
   const reportRef = useRef<HTMLDivElement>(null);
 
   // Answers as record for streaming endpoint
   const [answersRecord, setAnswersRecord] = useState<
     Record<string, string | string[] | number>
   >({});
+
+  // Pre-fetch dimension deep dives in batches to avoid API rate limits
+  const prefetchDeepDives = useCallback(
+    async (dims: DimensionScore[], quizAnswers: QuizAnswer[], bioAge: number, treatment: string) => {
+      // Check sessionStorage cache first
+      try {
+        const cached = sessionStorage.getItem(DEEP_DIVE_STORAGE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached) as Record<string, DeepDiveData>;
+          if (dims.every((d) => parsed[d.name])) {
+            setDeepDives(parsed);
+            return;
+          }
+        }
+      } catch { /* ignore corrupt cache */ }
+
+      const answersRec: Record<string, string | string[] | number> = {};
+      for (const a of quizAnswers) {
+        if (a.questionId) answersRec[a.questionId] = a.value;
+      }
+
+      // Start with any partially cached results from a previous visit
+      let results: Record<string, DeepDiveData> = {};
+      try {
+        const cached = sessionStorage.getItem(DEEP_DIVE_STORAGE_KEY);
+        if (cached) results = JSON.parse(cached);
+      } catch { /* ignore */ }
+
+      // Only fetch dimensions we don't already have cached
+      const missing = dims.filter((d) => !results[d.name]);
+      if (missing.length === 0) {
+        setDeepDives(results);
+        return;
+      }
+
+      const fetchOne = async (dim: DimensionScore): Promise<void> => {
+        const MAX_RETRIES = 3;
+        for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+          try {
+            const res = await fetch("/api/report/dimension", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                dimensionName: dim.name,
+                score: dim.score,
+                answers: answersRec,
+                biologicalAge: bioAge,
+                recommendedTreatment: treatment,
+              }),
+            });
+            if (res.ok) {
+              results[dim.name] = await res.json();
+              return;
+            }
+            if (res.status === 429 || res.status >= 500) {
+              await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+              continue;
+            }
+            return; // 4xx — don't retry
+          } catch {
+            if (attempt < MAX_RETRIES - 1) {
+              await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+            }
+          }
+        }
+      };
+
+      // Fetch one at a time to avoid rate limits
+      for (const dim of missing) {
+        await fetchOne(dim);
+        // Save to cache + update state after EACH successful fetch
+        try {
+          sessionStorage.setItem(DEEP_DIVE_STORAGE_KEY, JSON.stringify(results));
+        } catch { /* storage full */ }
+        setDeepDives((prev) => ({ ...prev, ...results }));
+      }
+    },
+    []
+  );
 
   // Handle streaming analysis completion
   const handleAnalysisComplete = useCallback(
@@ -160,22 +249,29 @@ export default function ReportPage() {
       setLowestDimension(sorted[0]?.name ?? "Energy & Vitality");
 
       // Use pre-calculated treatments, or recalculate if missing
+      let finalTreatment: TreatmentRecommendation;
       if (rec.primary) {
+        finalTreatment = rec;
         setTreatments(rec);
       } else {
         const symptoms = quizAnswers.find((a) => a.questionId === "q10");
         const symptomList = Array.isArray(symptoms?.value)
           ? symptoms.value
           : [];
-        const freshRec = recommendTreatments(dims, symptomList as string[]);
-        setTreatments(freshRec);
+        finalTreatment = recommendTreatments(dims, symptomList as string[]);
+        setTreatments(finalTreatment);
       }
+
+      // Start pre-fetching all dimension deep dives in parallel
+      // Runs during the analysis animation so they're ready when user sees the report
+      prefetchDeepDives(dims, quizAnswers, ba, finalTreatment.primary?.name ?? "NAD+ IV Drip");
 
       setReady(true);
     } catch (err) {
       console.error("Failed to parse quiz data:", err);
       router.replace("/quiz");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   if (!ready) {
@@ -315,6 +411,7 @@ export default function ReportPage() {
           biologicalAge={biologicalAge}
           chronologicalAge={chronologicalAge}
           recommendedTreatment={treatments?.primary?.name}
+          prefetchedDeepDives={deepDives}
         />
 
         {/* Divider */}

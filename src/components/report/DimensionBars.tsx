@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   Zap,
   Moon,
@@ -65,12 +65,15 @@ interface DeepDiveData {
   timeline: string;
 }
 
+const DEEP_DIVE_STORAGE_KEY = "deepDives";
+
 interface DimensionBarsProps {
   dimensions: DimensionScore[];
   answers?: QuizAnswer[];
   biologicalAge?: number;
   chronologicalAge?: number;
   recommendedTreatment?: string;
+  prefetchedDeepDives?: Record<string, DeepDiveData>;
 }
 
 export default function DimensionBars({
@@ -79,10 +82,41 @@ export default function DimensionBars({
   biologicalAge,
   chronologicalAge,
   recommendedTreatment,
+  prefetchedDeepDives,
 }: DimensionBarsProps) {
   const [expandedDim, setExpandedDim] = useState<string | null>(null);
-  const [deepDives, setDeepDives] = useState<Record<string, DeepDiveData>>({});
+  const [deepDives, setDeepDives] = useState<Record<string, DeepDiveData>>(() => {
+    if (prefetchedDeepDives && Object.keys(prefetchedDeepDives).length > 0) {
+      return prefetchedDeepDives;
+    }
+    try {
+      const cached = sessionStorage.getItem(DEEP_DIVE_STORAGE_KEY);
+      if (cached) return JSON.parse(cached);
+    } catch { /* ignore */ }
+    return {};
+  });
   const [loadingDim, setLoadingDim] = useState<string | null>(null);
+  const [failedDims, setFailedDims] = useState<Set<string>>(new Set());
+
+  // Ref to always have current deepDives available without stale closures
+  const deepDivesRef = useRef(deepDives);
+  useEffect(() => { deepDivesRef.current = deepDives; }, [deepDives]);
+
+  // Track in-flight fetches to prevent duplicate requests
+  const inFlightRef = useRef<Set<string>>(new Set());
+
+  // Merge in prefetched data when it arrives (async from parent)
+  useEffect(() => {
+    if (prefetchedDeepDives && Object.keys(prefetchedDeepDives).length > 0) {
+      setDeepDives((prev) => {
+        const merged = { ...prev, ...prefetchedDeepDives };
+        try {
+          sessionStorage.setItem(DEEP_DIVE_STORAGE_KEY, JSON.stringify(merged));
+        } catch { /* storage full — not critical */ }
+        return merged;
+      });
+    }
+  }, [prefetchedDeepDives]);
 
   const totalYearsStolen = dimensions.reduce(
     (sum, dim) => sum + estimateYearsStolen(dim.score),
@@ -90,54 +124,91 @@ export default function DimensionBars({
   );
   const totalRecoverable = Math.round(totalYearsStolen * 0.85 * 10) / 10;
 
+  // On-demand fetch with retry logic
   const fetchDeepDive = useCallback(
     async (dimName: string, score: number) => {
-      if (deepDives[dimName]) return;
-      setLoadingDim(dimName);
+      // Prevent duplicate in-flight requests
+      if (inFlightRef.current.has(dimName)) return;
+      inFlightRef.current.add(dimName);
 
-      try {
-        const answersRecord: Record<string, string | string[] | number> = {};
-        if (answers) {
-          for (const a of answers) {
-            if (a.questionId) answersRecord[a.questionId] = a.value;
+      setLoadingDim(dimName);
+      setFailedDims((prev) => {
+        const next = new Set(prev);
+        next.delete(dimName);
+        return next;
+      });
+
+      const answersRecord: Record<string, string | string[] | number> = {};
+      if (answers) {
+        for (const a of answers) {
+          if (a.questionId) answersRecord[a.questionId] = a.value;
+        }
+      }
+
+      const MAX_RETRIES = 3;
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        try {
+          const res = await fetch("/api/report/dimension", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              dimensionName: dimName,
+              score,
+              answers: answersRecord,
+              biologicalAge: biologicalAge ?? 35,
+              recommendedTreatment: recommendedTreatment ?? "NAD+ IV Drip",
+            }),
+          });
+
+          if (res.ok) {
+            const data: DeepDiveData = await res.json();
+            setDeepDives((prev) => {
+              const updated = { ...prev, [dimName]: data };
+              try {
+                sessionStorage.setItem(DEEP_DIVE_STORAGE_KEY, JSON.stringify(updated));
+              } catch { /* storage full */ }
+              return updated;
+            });
+            inFlightRef.current.delete(dimName);
+            setLoadingDim(null);
+            return; // Success — exit
+          }
+
+          // On 429 (rate limit) or 5xx, retry after delay
+          if (res.status === 429 || res.status >= 500) {
+            await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+            continue;
+          }
+
+          // Other error (4xx) — don't retry
+          break;
+        } catch (err) {
+          console.error(`Deep dive fetch attempt ${attempt + 1} failed:`, err);
+          if (attempt < MAX_RETRIES - 1) {
+            await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+            continue;
           }
         }
-
-        const res = await fetch("/api/report/dimension", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            dimensionName: dimName,
-            score,
-            answers: answersRecord,
-            biologicalAge: biologicalAge ?? 35,
-            recommendedTreatment: recommendedTreatment ?? "NAD+ IV Drip",
-          }),
-        });
-
-        if (res.ok) {
-          const data: DeepDiveData = await res.json();
-          setDeepDives((prev) => ({ ...prev, [dimName]: data }));
-        }
-      } catch (err) {
-        console.error("Failed to fetch deep dive:", err);
-      } finally {
-        setLoadingDim(null);
       }
+
+      // All retries exhausted
+      setFailedDims((prev) => new Set(prev).add(dimName));
+      inFlightRef.current.delete(dimName);
+      setLoadingDim(null);
     },
-    [answers, biologicalAge, recommendedTreatment, deepDives]
+    [answers, biologicalAge, recommendedTreatment]
   );
 
   const handleDimensionClick = useCallback(
     (dimName: string, score: number) => {
-      if (expandedDim === dimName) {
-        setExpandedDim(null);
-        return;
+      setExpandedDim((prev) => (prev === dimName ? null : dimName));
+
+      // Use ref to check current state — avoids stale closure and side effects in setter
+      if (!deepDivesRef.current[dimName]) {
+        fetchDeepDive(dimName, score);
       }
-      setExpandedDim(dimName);
-      fetchDeepDive(dimName, score);
     },
-    [expandedDim, fetchDeepDive]
+    [fetchDeepDive]
   );
 
   const isYounger = (biologicalAge ?? 0) < (chronologicalAge ?? 100);
@@ -190,6 +261,7 @@ export default function DimensionBars({
           const isExpanded = expandedDim === dim.name;
           const isLoading = loadingDim === dim.name;
           const deepDive = deepDives[dim.name];
+          const hasFailed = failedDims.has(dim.name);
           const yearsStolen = estimateYearsStolen(dim.score);
 
           return (
@@ -279,6 +351,25 @@ export default function DimensionBars({
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Error state with retry */}
+              {isExpanded && hasFailed && !isLoading && (
+                <div className="px-4 pb-4 pt-1 text-center">
+                  <p className="text-xs text-muted/50 mb-2">
+                    Failed to load analysis.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fetchDeepDive(dim.name, dim.score);
+                    }}
+                    className="text-xs text-gold hover:text-gold-light underline cursor-pointer"
+                  >
+                    Tap to retry
+                  </button>
                 </div>
               )}
             </div>
