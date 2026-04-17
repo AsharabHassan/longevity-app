@@ -1,6 +1,11 @@
 import { NextRequest } from "next/server";
 import { streamAnalysis } from "@/lib/claude";
-import Anthropic from "@anthropic-ai/sdk";
+
+type StreamEvent = {
+  type: string;
+  delta?: { type: string; text: string };
+  index?: number;
+};
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,12 +31,12 @@ export async function POST(req: NextRequest) {
         let fullText = "";
 
         try {
-          for await (const event of stream as AsyncIterable<Anthropic.MessageStreamEvent>) {
+          for await (const event of stream as AsyncIterable<StreamEvent>) {
             if (
               event.type === "content_block_delta" &&
-              event.delta.type === "text_delta"
+              event.delta?.type === "text_delta"
             ) {
-              const chunk = event.delta.text;
+              const chunk = event.delta!.text;
               fullText += chunk;
 
               // Check if we just completed a dimension marker
