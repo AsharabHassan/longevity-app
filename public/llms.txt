@@ -1,26 +1,19 @@
 # Harley Street Medical Wellness
-> AI-powered longevity assessments and IV therapy treatments in London and Glasgow.
+> A private longevity clinic in London and Glasgow. We measure before we recommend anything.
 
 ## About
-Harley Street Medical Wellness is a premium wellness clinic offering advanced IV therapy and longevity treatments. We use cutting-edge science to help patients optimize their health, reverse biological aging, and achieve peak performance.
+Harley Street Medical Wellness is a private clinic with sites in London (1-5 Portpool Lane, EC1N 7UU) and Glasgow (Ingram House, 227 Ingram Street, G1 1DA). Every patient starts with an assessment and a consultation; any treatment is decided individually by a clinician.
 
-## Treatments
-- EBOO Therapy: Advanced ozone blood treatment for comprehensive cellular detoxification (£1,995)
-- NAD+ IV Drip: Cellular energy replenishment and anti-aging at the molecular level (£295)
-- Immunity IV Drip: High-dose immune support to strengthen natural defenses (£295)
-- Detox IV Drip: Liver support and toxin elimination for internal reset (£399)
-- Skin Glow IV Drip: Glutathione and vitamin C for radiant skin (£299)
-- Myers Cocktail: Classic vitamin and mineral infusion for overall wellness (£295)
-- Phospholipid Exchange IV: Cell membrane repair and neurological support (£425)
-- IV Methylene Blue: Cognitive enhancement and mitochondrial support (£395)
-- Metabolic Health Programme: Comprehensive metabolic optimization (£1,500)
+## Lifestyle Age Assessment
+A free three-minute questionnaire that gives a lifestyle age estimate: a range showing how your habits (smoking, activity, body weight, diet, sleep, alcohol, stress, social connection) compare with large published population studies. It is an educational estimate, not a measurement of biological age and not a medical test. Every figure links to its source, and the method is published at /methodology.
 
-## Biological Age Assessment
-Take our free AI-powered quiz to discover your biological age, get a personalized wellness score across 9 health dimensions, and receive treatment recommendations tailored to your specific profile.
-
-## Locations
-- London: Harley Street
-- Glasgow
+## What we offer
+- A free 10-minute consultation to go through your results
+- Blood tests
+- A saliva-based epigenetic age estimate (a wellness test, not a diagnosis)
+- A metabolic health assessment and lifestyle programme
+- Further therapies, discussed only in consultation where clinically appropriate
 
 ## Contact
 Website: https://harleystreetmedicalwellness.co.uk
+Phone: 020 4628 3137

@@ -42,3 +42,9 @@ next-env.d.ts
 
 # superpowers
 .superpowers/
+
+# local build backups & test artifacts
+/.next-before-ad-capture/
+/.playwright-mcp/
+/output/
+/tmp/

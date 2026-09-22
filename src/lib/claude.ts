@@ -1,297 +1,102 @@
 import Anthropic from "@anthropic-ai/sdk";
-import {
-  getEscalationTier,
-  OBJECTION_PATTERNS,
-  TREATMENT_DEEP_KNOWLEDGE,
-  BOOKING_PROMPTS,
-} from "./salesPlaybook";
+import { CLINIC, consultationHost } from "./clinic";
+import { findBlockedTerm, hasOnlyAllowedNumbers } from "./compliance";
+import { DISCLAIMER } from "./evidence";
+import { summaryFacts, templateSummary } from "./summary";
+import type { ChatMessage, LifestyleAgeResult } from "./types";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+const MODEL = "claude-haiku-4-5-20251001";
 
-/* ── Micro-insight (unchanged) ────────────────────────── */
-export async function generateMicroInsight(
-  age: number,
-  answers: Record<string, string | string[] | number>,
-  triggerQuestion: string
-): Promise<string> {
-  const response = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 200,
-    system:
-      "You are a longevity science expert at Harley Street Medical Wellness. Generate a single fascinating, personalized health insight based on the user's quiz answers. Keep it to 2-3 sentences. Reference a real scientific mechanism. Be specific to their age and answers. Use a warm but authoritative tone. Do NOT recommend treatments yet.",
-    messages: [
-      {
-        role: "user",
-        content: `User age: ${age}. Answers so far: ${JSON.stringify(answers)}. Just answered question: ${triggerQuestion}. Generate a personalized micro-insight.`,
-      },
-    ],
-  });
+/**
+ * AI is used for wording only. The estimate, the drivers and every figure come
+ * from lifestyleAge.ts; the model is given those facts and asked to phrase them.
+ * Its output is rejected — and a fixed template used instead — if it contains a
+ * blocked term or any number it was not given.
+ */
 
-  return (response.content[0] as Anthropic.TextBlock).text;
-}
+const SUMMARY_SYSTEM = `You write a short personal summary of a lifestyle questionnaire result for a UK private clinic.
 
-/* ── Adaptive question selection (unchanged) ──────────── */
-export async function selectAdaptiveQuestions(
-  symptoms: string[],
-  availableQuestionIds: string[]
-): Promise<string[]> {
-  const response = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 100,
-    system:
-      "You select the 2 most relevant follow-up questions for a longevity quiz based on user symptoms. Return ONLY a JSON array of exactly 2 question IDs from the available list. No explanation, no markdown, just the JSON array.",
-    messages: [
-      {
-        role: "user",
-        content: `User symptoms: ${JSON.stringify(symptoms)}. Available question IDs: ${JSON.stringify(availableQuestionIds)}. Return the 2 most relevant as a JSON array.`,
-      },
-    ],
-  });
+Use ONLY the facts in the user message. Write 3-4 sentences, at most 90 words, in warm, plain British English, addressed to the reader as "you".
 
-  const text = (response.content[0] as Anthropic.TextBlock).text;
-  return JSON.parse(text);
-}
+Rules:
+- Call the result a "lifestyle age estimate". It is an estimate from a questionnaire, never a measurement or a test result.
+- Use no numbers other than the ones you are given.
+- Never name or hint at any treatment, medicine, supplement, drip, injection, test brand or product.
+- Do not explain biological mechanisms. Do not diagnose or suggest a cause for any concern.
+- Make no promises and no claims that anything can be undone, fixed or improved by a set amount.
+- Do not use alarmist language. If the estimate is older than the calendar age, be matter-of-fact and encouraging.
+- CLOSING_RULE
 
-/* ── Report generation (unchanged) ────────────────────── */
-export async function generateReport(
-  answers: Record<string, string | string[] | number>,
-  dimensions: Array<{ name: string; score: number }>,
-  wellnessScore: number,
-  biologicalAge: number,
-  chronologicalAge: number,
-  primaryTreatment: string,
-  supportingTreatments: string[]
-): Promise<{
-  verdict: string;
-  dimensionNarratives: Record<string, string>;
-  riskFactors: Array<{ title: string; explanation: string }>;
-  treatmentPlan: {
-    primary: { name: string; reasoning: string };
-    supporting: Array<{ name: string; reasoning: string }>;
-    timeline: string;
-  };
-}> {
-  const response = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 2000,
-    system:
-      `You are a Harley Street longevity specialist writing a personalized wellness report based on current longevity science.
+Return the summary as plain text with no heading, quotes or formatting.`;
 
-Key research to reference when relevant:
-- NAD+ levels decline ~50% per decade after age 30 (Imai & Guarente, Cell Metabolism 2014)
-- Sleep <6 hours or >9 hours correlates with accelerated biological aging (MDPI Biological Age Study, 2018)
-- Chronic stress shortens telomeres via cortisol-telomere feedback loop (multiple 2024 reviews)
-- The biggest exercise benefit jump is from sedentary to moderate activity (WHO 2024, CMEC 2025)
-- Glutathione IV shows visible skin improvement within 4-6 weeks (clinical trials)
-- Low-dose methylene blue improved memory by 7% with enhanced prefrontal cortex activity (fMRI study, 2016)
+const CLOSING_QUALIFIED = `End by saying the free consultation with ${consultationHost()} is where they can go through it properly. Use that name and role exactly as written.`;
+const CLOSING_UNQUALIFIED =
+  "Do not mention a consultation, booking, the clinic's services or any next step with the clinic. End by pointing them to the research shown below.";
 
-Write in a warm, authoritative tone — professional but accessible. Reference biological mechanisms in plain language. Every recommendation must be tied to the user's specific answers and scores. Do NOT use generic text.
+export async function generateSummary(
+  result: LifestyleAgeResult,
+  firstName: string,
+  qualified = true
+): Promise<{ text: string; source: "ai" | "template" }> {
+  const fallback = { text: templateSummary(result, firstName, qualified), source: "template" as const };
+  const facts = summaryFacts(result);
 
-For dimension narratives:
-- Reference the SPECIFIC biological mechanism (e.g., mitochondrial ATP production, glymphatic clearance, HPA axis)
-- Tie the mechanism to their specific answer (e.g., "Your reported 5-6 hours of sleep means your glymphatic system has ~40% less time to clear neurotoxins")
-- Explain the aging impact in concrete terms
+  try {
+    const response = await client.messages.create({
+      model: MODEL,
+      max_tokens: 300,
+      system: SUMMARY_SYSTEM.replace("CLOSING_RULE", qualified ? CLOSING_QUALIFIED : CLOSING_UNQUALIFIED),
+      messages: [{ role: "user", content: JSON.stringify({ firstName, ...facts }) }],
+    });
 
-Return valid JSON only — no markdown fences, no explanation.`,
-    messages: [
-      {
-        role: "user",
-        content: `Generate a personalized longevity report as JSON.
+    const block = response.content[0];
+    const text = block?.type === "text" ? block.text.trim() : "";
+    const allowedNumbers = [facts.calendarAge, facts.estimateLow, facts.estimateHigh];
 
-User data:
-- Age: ${answers.q1}, Gender: ${answers.q2}
-- Health goal: ${answers.q3}
-- All answers: ${JSON.stringify(answers)}
-- Dimension scores: ${JSON.stringify(dimensions)}
-- Wellness Score: ${wellnessScore}/100
-- Biological Age: ${biologicalAge} (actual: ${chronologicalAge})
-- Primary treatment: ${primaryTreatment}
-- Supporting treatments: ${JSON.stringify(supportingTreatments)}
-
-Return this exact JSON structure:
-{
-  "verdict": "One compelling sentence about their biological age and what it means",
-  "dimensionNarratives": { "Dimension Name": "2-3 sentence personalized narrative for each dimension" },
-  "riskFactors": [{ "title": "Risk factor name", "explanation": "Plain language explanation tied to their specific answers" }],
-  "treatmentPlan": {
-    "primary": { "name": "Treatment name", "reasoning": "2-3 sentences explaining why this is specifically right for them" },
-    "supporting": [{ "name": "Treatment name", "reasoning": "1-2 sentences explaining why this complements the primary" }],
-    "timeline": "Month 1: ... → Month 2: ... → Month 3: ..."
+    const offersWhenItShouldNot = !qualified && /consultation|book|appointment/i.test(text);
+    if (!text || offersWhenItShouldNot || findBlockedTerm(text) || !hasOnlyAllowedNumbers(text, allowedNumbers)) {
+      return fallback;
+    }
+    return { text, source: "ai" };
+  } catch (error) {
+    console.error("Summary generation failed:", error);
+    return fallback;
   }
-}`,
-      },
-    ],
-  });
-
-  const text = (response.content[0] as Anthropic.TextBlock).text;
-  const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-  return JSON.parse(cleaned);
 }
 
-/* ── Sales-Trained Chat (UPGRADED) ────────────────────── */
-export async function chatResponse(
-  messages: Array<{ role: "user" | "assistant"; content: string }>,
-  context: {
-    answers: Record<string, string | string[] | number>;
-    wellnessScore: number;
-    biologicalAge: number;
-    treatments: string[];
-  },
-  messageCount: number = 0
-): Promise<string> {
-  const tier = getEscalationTier(messageCount);
-  const randomBookingPrompt =
-    BOOKING_PROMPTS[Math.floor(Math.random() * BOOKING_PROMPTS.length)];
+function chatSystem(result: LifestyleAgeResult): string {
+  return `You are the AI assistant on the website of ${CLINIC.brand}, a private clinic in London and Glasgow. You are an automated assistant, not a clinician, and you say so if asked.
 
+The visitor has just completed a lifestyle questionnaire. Their result, which is an ESTIMATE and not a measurement:
+${JSON.stringify(summaryFacts(result))}
+
+How the estimate works: eight lifestyle factors (smoking, activity, body weight, diet, sleep, alcohol, stress, social connection) are each converted to years using published population studies, then capped. Concerns the visitor reported do not change it. ${DISCLAIMER}
+
+What you can do:
+- Explain how the estimate was worked out and what each factor means, in plain British English.
+- Give general, widely accepted lifestyle information (for example UK guidance of 150 minutes of activity a week, or 14 units of alcohol).
+- Explain what happens in the free ${CLINIC.consultation.minutes}-minute consultation with ${consultationHost()}: a walk through their results, which tests are worth doing, and what a plan could look like.
+- Say that the clinic offers blood tests and a saliva-based epigenetic age estimate, which is a wellness test and not a diagnosis.
+- Help them book: ${CLINIC.bookingUrl}
+
+What you must never do:
+- Never name, describe, price, recommend or confirm the availability of any medicine, injection, drip, infusion, peptide, cell-based or ozone treatment, or supplement. If asked, say you can't discuss specific treatments in chat and that a clinician can cover any option in a consultation.
+- Never diagnose, interpret symptoms, suggest a cause for a symptom, or advise on medication.
+- Never say or imply that anything will reverse, undo or reduce their age, or promise any outcome or timeframe.
+- Never explain biological mechanisms or quote statistics that are not in this prompt.
+- For anything urgent or worrying, tell them to contact their GP, NHS 111, or 999 in an emergency.
+
+Keep replies to 2-4 sentences. Do not push. Mention booking only when it is relevant or asked about.`;
+}
+
+export async function chatResponse(messages: ChatMessage[], result: LifestyleAgeResult): Promise<string> {
   const response = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 600,
-    system: `You are the AI Longevity Advisor at Harley Street Medical Wellness (London & Glasgow). You have the user's complete quiz results and are a trained clinical sales consultant.
-
-## USER CONTEXT
-- Wellness Score: ${context.wellnessScore}/100
-- Biological Age: ${context.biologicalAge}
-- Full quiz answers: ${JSON.stringify(context.answers)}
-
-## TREATMENT ALIGNMENT — CRITICAL
-The user's report has already recommended these SPECIFIC treatments based on their scores:
-→ PRIMARY: ${context.treatments[0] ?? "N/A"}
-→ SUPPORTING: ${context.treatments.slice(1).join(", ") || "N/A"}
-
-**YOU MUST ONLY RECOMMEND THESE EXACT TREATMENTS.** Never suggest alternatives or different treatments. When the user asks about treatments, always talk about "${context.treatments[0]}" as the #1 recommendation. If they ask "what treatment do you recommend?" or similar, always answer with the exact treatments above. This is critical for trust — the report and chat must say the same thing.
-
-## CURRENT ESCALATION TIER: ${tier.label.toUpperCase()} (message ${messageCount} of conversation)
-${tier.instructions}
-
-${OBJECTION_PATTERNS}
-
-${TREATMENT_DEEP_KNOWLEDGE}
-
-## RESPONSE RULES
-- ALWAYS tie responses to the user's SPECIFIC quiz answers and dimension scores
-- ALWAYS recommend ONLY the treatments listed above — never deviate
-- Use a warm, confident, professional tone — you are a Harley Street clinician, not a sales rep
-- Keep responses concise: 2-5 sentences unless explaining a treatment mechanism
-- NEVER give medical diagnoses or contradict their doctor
-- NEVER sound desperate or pushy — you are an expert sharing knowledge
-- When mentioning booking, use: "${randomBookingPrompt}" and include the link: https://link.harleystreetmedicalwellness.co.uk/widget/bookings/wellness-consultant-1
-- Frame it as a FREE online consultation — zero cost, zero obligation
-- When the user asks about price, use the cost-comparison frameworks from the playbook
-- Format key terms with <strong> tags for emphasis
-- If the conversation has reached 20+ messages, naturally guide toward booking or a human handoff — do NOT abruptly cut off`,
+    model: MODEL,
+    max_tokens: 400,
+    system: chatSystem(result),
     messages,
   });
-
-  return (response.content[0] as Anthropic.TextBlock).text;
-}
-
-/* ── Streaming Analysis Show (NEW) ────────────────────── */
-export async function streamAnalysis(
-  answers: Record<string, string | string[] | number>,
-  dimensions: Array<{ name: string; score: number }>,
-  wellnessScore: number,
-  biologicalAge: number,
-  chronologicalAge: number,
-  primaryTreatment: string,
-  supportingTreatments: string[]
-): Promise<AsyncIterable<Anthropic.MessageStreamEvent>> {
-  const stream = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 3000,
-    stream: true,
-    system: `You are a Harley Street longevity specialist performing a live cellular health analysis. You are analyzing each wellness dimension one by one, creating anticipation and educating the user.
-
-Key research to cite naturally when relevant:
-- NAD+ decline: ~50% per decade after age 30, drives mitochondrial dysfunction
-- Sleep and biological age: <6 hrs = accelerated telomere shortening (MDPI 2018)
-- Cortisol-telomere feedback: chronic stress literally shortens DNA protective caps
-- Exercise benefit curve: biggest jump from sedentary → moderate (WHO/CMEC 2025)
-- Glymphatic clearance: deep sleep flushes neurotoxins at 10× daytime rate
-
-For EACH dimension, write a focused 2-3 sentence analysis that:
-1. Names the specific biological mechanism affected
-2. References the user's specific answer
-3. Explains the aging impact in concrete terms
-
-Use this exact format for each dimension:
-
----DIMENSION: [Exact Dimension Name]---
-[Your 2-3 sentence analysis]
-
-After all dimensions, write:
-
----VERDICT---
-[One compelling sentence about their overall biological age and what it means for them]
-
----REPORT---
-Then output the full report as a JSON object with this structure (no markdown fences):
-{"verdict":"...","dimensionNarratives":{"Dimension Name":"..."},"riskFactors":[{"title":"...","explanation":"..."}],"treatmentPlan":{"primary":{"name":"...","reasoning":"..."},"supporting":[{"name":"...","reasoning":"..."}],"timeline":"Month 1: ... → Month 2: ... → Month 3: ..."}}
-
-IMPORTANT:
-- Analyze dimensions in this order: Sleep Quality, Energy & Vitality, Stress & Mental Wellness, Cognitive Function, Metabolic Health, Physical Activity, Immune Resilience, Cellular & Skin Health
-- Reference the user's SPECIFIC answers, not generic advice
-- Be warm but authoritative — you are a clinician, not a wellness influencer`,
-    messages: [
-      {
-        role: "user",
-        content: `Analyze my cellular health results:
-- Age: ${answers.q1}, Gender: ${answers.q2}
-- Health goal: ${answers.q3}
-- All answers: ${JSON.stringify(answers)}
-- Dimension scores: ${JSON.stringify(dimensions)}
-- Wellness Score: ${wellnessScore}/100
-- Biological Age: ${biologicalAge} (actual: ${chronologicalAge})
-- Primary treatment: ${primaryTreatment}
-- Supporting treatments: ${JSON.stringify(supportingTreatments)}
-
-Perform a dimension-by-dimension analysis.`,
-      },
-    ],
-  });
-
-  return stream;
-}
-
-/* ── Dimension Deep-Dive (NEW) ────────────────────────── */
-export async function generateDimensionDeepDive(
-  dimensionName: string,
-  score: number,
-  answers: Record<string, string | string[] | number>,
-  biologicalAge: number,
-  recommendedTreatment: string
-): Promise<{
-  mechanism: string;
-  agingImpact: string;
-  treatmentConnection: string;
-  timeline: string;
-}> {
-  const response = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 500,
-    system: `You are a Harley Street longevity specialist providing a detailed explanation of a single wellness dimension. Return valid JSON only — no markdown fences, no explanation. Be specific to the user's answers and scores.`,
-    messages: [
-      {
-        role: "user",
-        content: `Generate a deep-dive for this wellness dimension as JSON.
-
-Dimension: ${dimensionName}
-Score: ${score}/100
-User answers: ${JSON.stringify(answers)}
-Biological age: ${biologicalAge}
-Recommended treatment: ${recommendedTreatment}
-
-Return this exact JSON structure:
-{
-  "mechanism": "2-3 sentences explaining what's happening in their body at the cellular/molecular level for this specific dimension. Reference their specific answers.",
-  "agingImpact": "2-3 sentences explaining how this dimension score specifically affects their biological aging rate. Reference real aging research.",
-  "treatmentConnection": "2-3 sentences explaining how ${recommendedTreatment} specifically addresses this dimension. Reference the treatment's mechanism of action.",
-  "timeline": "2-3 sentences describing the expected improvement timeline for this dimension with treatment. Be specific about weeks/months."
-}`,
-      },
-    ],
-  });
-
-  const text = (response.content[0] as Anthropic.TextBlock).text;
-  const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-  return JSON.parse(cleaned);
+  const block = response.content[0];
+  return block?.type === "text" ? block.text : "";
 }

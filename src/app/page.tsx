@@ -1,6 +1,8 @@
 import Hero from "@/components/landing/Hero";
 import Features from "@/components/landing/Features";
 import TrustBar from "@/components/landing/TrustBar";
+import Link from "next/link";
+import { CLINIC } from "@/lib/clinic";
 
 export default function Home() {
   return (
@@ -50,6 +52,17 @@ export default function Home() {
         <Hero />
         <Features />
         <TrustBar />
+        <footer className="px-6 pb-10 text-center text-[10.5px] leading-relaxed text-muted/40">
+          <p>
+            The lifestyle age estimate is educational and is not a medical test or a measurement of biological age.{" "}
+            <Link href="/methodology" className="underline underline-offset-2 hover:text-gold/80">
+              How we work it out
+            </Link>
+          </p>
+          <p className="mt-2">
+            {CLINIC.brand} · {CLINIC.locations.London.address} · {CLINIC.locations.Glasgow.address}
+          </p>
+        </footer>
       </main>
     </div>
   );

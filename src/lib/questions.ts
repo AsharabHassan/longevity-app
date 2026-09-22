@@ -1,374 +1,184 @@
-import { Question, AdaptiveBankEntry } from "./types";
+import type { Question } from "./types";
 
-export const FIXED_QUESTIONS: Question[] = [
-  // Phase 1: Warm-up
+/**
+ * The quiz, in order. Only the eight lifestyle factors (smoking, activity, body,
+ * diet, sleep, alcohol, stress, social) feed the estimate — see lifestyleAge.ts.
+ * Goal, concerns and location personalise the report and never move the number.
+ * "investment" decides whether the report shows the clinic's offer at all.
+ */
+export const QUIZ_SEQUENCE: Question[] = [
   {
-    id: "q1",
-    phase: 1,
+    id: "age",
     text: "What is your age?",
     type: "numeric",
     min: 18,
     max: 100,
   },
   {
-    id: "q2",
-    phase: 1,
-    text: "What is your gender?",
-    type: "single",
-    options: [
-      { label: "Male", score: 0 },
-      { label: "Female", score: 0 },
-      { label: "Prefer not to say", score: 0 },
-    ],
-  },
-  {
-    id: "q3",
-    phase: 1,
-    text: "What is your #1 health goal right now?",
-    subtext: "Select the one that matters most to you",
+    id: "goal",
+    text: "What matters most to you right now?",
+    subtext: "We'll use this to focus your report",
     type: "image-cards",
     options: [
-      { label: "More Energy", description: "Fight fatigue and feel alive", score: 0, icon: "zap" },
-      { label: "Cognitive Performance", description: "Sharper focus and clarity", score: 0, icon: "brain" },
-      { label: "Anti-aging", description: "Turn back the biological clock", score: 0, icon: "clock" },
-      { label: "Stronger Immunity", description: "Stop getting sick", score: 0, icon: "shield" },
-      { label: "Detox & Cleanse", description: "Remove toxins, feel clean", score: 0, icon: "droplets" },
-      { label: "Better Skin", description: "Glow from the inside out", score: 0, icon: "sparkles" },
-      { label: "Athletic Recovery", description: "Recover faster, perform better", score: 0, icon: "activity" },
-      { label: "Overall Optimization", description: "Upgrade everything", score: 0, icon: "target" },
-    ],
-  },
-
-  // Phase 2: Lifestyle Assessment
-  {
-    id: "q4",
-    phase: 2,
-    text: "How would you rate your energy levels?",
-    subtext: "Think about a typical day",
-    type: "scale",
-    options: [
-      { label: "Chronically Fatigued", score: 0, icon: "battery" },
-      { label: "Low Energy", score: 1, icon: "battery-low" },
-      { label: "Moderate", score: 2, icon: "battery-medium" },
-      { label: "Good with Dips", score: 3, icon: "battery-medium" },
-      { label: "High & Stable", score: 4, icon: "battery-full" },
+      { label: "More Energy", description: "Feel less drained day to day", value: "energy", icon: "zap" },
+      { label: "Sharper Focus", description: "Think clearly under load", value: "focus", icon: "brain" },
+      { label: "Healthy Ageing", description: "Stay well for longer", value: "ageing", icon: "clock" },
+      { label: "Better Sleep", description: "Wake up properly rested", value: "sleep", icon: "moon" },
+      { label: "Weight & Metabolism", description: "Understand what's going on", value: "metabolic", icon: "activity" },
+      { label: "Fitness & Recovery", description: "Train and bounce back well", value: "recovery", icon: "dumbbell" },
+      { label: "Stress & Resilience", description: "Cope better with pressure", value: "stress", icon: "shield" },
+      { label: "A Full Check-up", description: "Know where I stand", value: "checkup", icon: "target" },
     ],
   },
   {
-    id: "q5",
-    phase: 2,
-    text: "How many hours of sleep do you typically get?",
+    id: "smoking",
+    text: "Do you smoke?",
+    subtext: "Cigarettes, cigars or roll-ups",
     type: "single",
     options: [
-      { label: "Under 5 hours", score: 0 },
-      { label: "5-6 hours", score: 1 },
-      { label: "6-7 hours", score: 2 },
-      { label: "7-8 hours", score: 4 },
-      { label: "Over 8 hours", score: 3 },
+      { label: "Never smoked", value: "never" },
+      { label: "Quit more than 10 years ago", value: "quit10plus" },
+      { label: "Quit in the last 10 years", value: "quitRecent" },
+      { label: "Yes — fewer than 10 a day", value: "currentLight" },
+      { label: "Yes — 10 or more a day", value: "currentHeavy" },
     ],
   },
   {
-    id: "q6",
-    phase: 2,
-    text: "How would you rate your sleep quality?",
+    id: "activity",
+    text: "How active are you in a typical week?",
+    subtext: "Brisk walking, cycling, sport, gym — anything that raises your heart rate",
     type: "single",
     options: [
-      { label: "Poor — I wake frequently", score: 0 },
-      { label: "Fair — restless nights", score: 1 },
-      { label: "Average — some disruptions", score: 2 },
-      { label: "Good — mostly refreshing", score: 3 },
-      { label: "Excellent — I wake refreshed", score: 4 },
+      { label: "150+ minutes, plus strength training", value: "strength" },
+      { label: "150+ minutes", description: "About 30 minutes, 5 days a week", value: "active" },
+      { label: "Some, but less than 150 minutes", value: "some" },
+      { label: "Very little — mostly sitting", value: "sedentary" },
     ],
   },
   {
-    id: "q7",
-    phase: 2,
-    text: "How many days per week do you exercise for 30+ minutes?",
+    id: "body",
+    text: "What are your height and weight?",
+    subtext: "Used to work out your BMI. It stays on your report.",
+    type: "body",
+  },
+  {
+    id: "diet",
+    text: "Which best describes how you eat?",
     type: "single",
     options: [
-      { label: "0 days — completely sedentary", score: 0 },
-      { label: "1-2 days", score: 2 },
-      { label: "3-4 days", score: 3 },
-      { label: "5+ days", score: 4 },
+      { label: "Mostly whole foods", description: "Vegetables, fruit, fish, pulses, whole grains most days", value: "wholefood" },
+      { label: "A mix", description: "Some healthy meals, some convenience food", value: "mixed" },
+      { label: "Mostly processed or takeaway", description: "Convenience-driven most days", value: "processed" },
     ],
   },
   {
-    id: "q8",
-    phase: 2,
-    text: "How would you describe your diet?",
+    id: "sleepHours",
+    text: "How many hours do you usually sleep?",
+    subtext: "On a typical night",
     type: "single",
     options: [
-      { label: "Mostly processed / fast food", description: "Convenience-driven eating", score: 0 },
-      { label: "Mixed — some healthy, some not", description: "Inconsistent nutrition", score: 1 },
-      { label: "Generally healthy", description: "Whole foods with occasional treats", score: 2 },
-      { label: "Very healthy", description: "Mostly whole foods, balanced macros", score: 3 },
-      { label: "Optimized", description: "Nutrient-dense, intentional eating", score: 4 },
+      { label: "Under 6 hours", value: "under6" },
+      { label: "6–7 hours", value: "6to7" },
+      { label: "7–8 hours", value: "7to8" },
+      { label: "8–9 hours", value: "8to9" },
+      { label: "More than 9 hours", value: "over9" },
     ],
   },
   {
-    id: "q9",
-    phase: 2,
-    text: "How would you rate your daily stress level?",
-    subtext: "Consider work, relationships, and life overall",
-    type: "scale",
+    id: "sleepQuality",
+    text: "How well do you sleep?",
+    type: "single",
     options: [
-      { label: "Very High", score: 0 },
-      { label: "High", score: 1 },
-      { label: "Moderate", score: 2 },
-      { label: "Low", score: 3 },
-      { label: "Minimal", score: 4 },
+      { label: "Well — I usually wake refreshed", value: "good" },
+      { label: "Okay — some restless nights", value: "okay" },
+      { label: "Poorly — I often struggle to sleep or wake unrefreshed", value: "poor" },
     ],
   },
-
-  // Phase 3: Symptom Deep Dive
   {
-    id: "q10",
-    phase: 3,
-    text: "Which of these do you experience regularly?",
-    subtext: "Select all that apply",
+    id: "alcohol",
+    text: "How much alcohol do you drink in a typical week?",
+    subtext: "14 units is about 6 pints of beer or 6 medium glasses of wine",
+    type: "single",
+    options: [
+      { label: "None", value: "none" },
+      { label: "Up to 14 units", value: "within14" },
+      { label: "15–35 units", value: "15to35" },
+      { label: "More than 35 units, or a heavy session most weeks", value: "over35" },
+    ],
+  },
+  {
+    id: "stress",
+    text: "How would you describe your stress levels?",
+    subtext: "Work, relationships and life overall",
+    type: "single",
+    options: [
+      { label: "Low", value: "low" },
+      { label: "Moderate", value: "moderate" },
+      { label: "High, but I recover at weekends or on holiday", value: "high" },
+      { label: "High, and I rarely switch off", value: "highNoRecovery" },
+    ],
+  },
+  {
+    id: "social",
+    text: "How connected do you feel to other people?",
+    type: "single",
+    options: [
+      { label: "Well connected — I see friends or family most weeks", value: "strong" },
+      { label: "Somewhat — less than I'd like", value: "some" },
+      { label: "Often isolated or lonely", value: "isolated" },
+    ],
+  },
+  {
+    id: "concerns",
+    text: "Is anything bothering you at the moment?",
+    subtext: "Select all that apply. These don't change your estimate — they help us prepare for your consultation.",
     type: "multi",
     options: [
-      { label: "Brain fog", score: 0, icon: "cloud" },
-      { label: "Chronic fatigue", score: 0, icon: "battery-low" },
-      { label: "Frequent colds/illness", score: 0, icon: "thermometer" },
-      { label: "Skin dullness", score: 0, icon: "eye-off" },
-      { label: "Slow recovery", score: 0, icon: "clock" },
-      { label: "Digestive issues", score: 0, icon: "circle-dot" },
-      { label: "Joint pain", score: 0, icon: "bone" },
-      { label: "Mood swings", score: 0, icon: "frown" },
-      { label: "Weight struggles", score: 0, icon: "scale" },
-      { label: "None of the above", score: 4, icon: "check-circle" },
-    ],
-  },
-  // Q11, Q12 are adaptive — inserted dynamically from the bank
-  {
-    id: "q13",
-    phase: 3,
-    text: "Have you noticed changes in your skin quality in the past year?",
-    type: "single",
-    options: [
-      { label: "Yes, significantly worse", score: 0 },
-      { label: "Slightly worse", score: 1 },
-      { label: "No change", score: 2 },
-      { label: "Slightly improved", score: 3 },
-      { label: "Significantly improved", score: 4 },
+      { label: "Brain fog", value: "Brain fog", icon: "cloud" },
+      { label: "Persistent tiredness", value: "Persistent tiredness", icon: "battery-low" },
+      { label: "Poor sleep", value: "Poor sleep", icon: "moon" },
+      { label: "Getting ill often", value: "Getting ill often", icon: "thermometer" },
+      { label: "Slow recovery", value: "Slow recovery", icon: "clock" },
+      { label: "Digestive issues", value: "Digestive issues", icon: "circle-dot" },
+      { label: "Joint pain", value: "Joint pain", icon: "bone" },
+      { label: "Low or changeable mood", value: "Low or changeable mood", icon: "frown" },
+      { label: "Weight changes", value: "Weight changes", icon: "scale" },
+      { label: "Skin changes", value: "Skin changes", icon: "sparkles" },
+      { label: "None of the above", value: "None of the above", icon: "check-circle" },
     ],
   },
   {
-    id: "q14",
-    phase: 3,
-    text: "How often do you experience energy crashes during the day?",
+    id: "investment",
+    text: "If testing or a programme looked right for you, would you be comfortable investing £500 or more in your health?",
+    subtext: "There's no wrong answer. It tells us whether to show you what the clinic offers.",
     type: "single",
     options: [
-      { label: "Constantly", score: 0 },
-      { label: "Frequently (most days)", score: 1 },
-      { label: "Occasionally (1-2x/week)", score: 3 },
-      { label: "Never", score: 4 },
-    ],
-  },
-
-  // Phase 4: Readiness
-  {
-    id: "q15",
-    phase: 4,
-    text: "Have you tried IV therapy or wellness treatments before?",
-    type: "single",
-    options: [
-      { label: "Never", score: 1 },
-      { label: "Once or twice", score: 2 },
-      { label: "Regular", score: 4 },
+      { label: "Yes, comfortably", value: "yes" },
+      { label: "Yes, if I can see the value", value: "yesIfValue" },
+      { label: "Not right now", value: "no" },
     ],
   },
   {
-    id: "q16",
-    phase: 4,
-    text: "Which location is more convenient for you?",
+    id: "location",
+    text: "Which clinic is more convenient for you?",
     type: "single",
     options: [
-      { label: "London (Portpool Lane)", score: 0 },
-      { label: "Glasgow", score: 0 },
+      { label: "London (Portpool Lane, EC1N)", value: "London" },
+      { label: "Glasgow (Ingram Street, G1)", value: "Glasgow" },
     ],
   },
 ];
 
-export const ADAPTIVE_BANK: AdaptiveBankEntry[] = [
-  {
-    triggers: ["Brain fog", "Chronic fatigue"],
-    dimension: "cognitive",
-    questions: [
-      {
-        id: "q11-cognitive-clarity",
-        phase: 3,
-        text: "How would you describe your mental clarity throughout the day?",
-        type: "single",
-        isAdaptive: true,
-        options: [
-          { label: "Sharp all day", score: 4 },
-          { label: "Clear mornings, foggy afternoons", score: 2 },
-          { label: "Foggy most of the day", score: 1 },
-          { label: "Persistently cloudy, can't focus", score: 0 },
-        ],
-      },
-      {
-        id: "q11-cognitive-duration",
-        phase: 3,
-        text: "How long have you been experiencing cognitive difficulties?",
-        type: "single",
-        isAdaptive: true,
-        options: [
-          { label: "Just recently, less than a month", score: 3 },
-          { label: "A few months", score: 2 },
-          { label: "6-12 months", score: 1 },
-          { label: "Over a year", score: 0 },
-        ],
-      },
-    ],
-  },
-  {
-    triggers: ["Frequent colds/illness", "Slow recovery"],
-    dimension: "immune",
-    questions: [
-      {
-        id: "q11-immune-frequency",
-        phase: 3,
-        text: "How many times have you been ill in the past 12 months?",
-        type: "single",
-        isAdaptive: true,
-        options: [
-          { label: "0-1 times", score: 4 },
-          { label: "2-3 times", score: 2 },
-          { label: "4-5 times", score: 1 },
-          { label: "6+ times", score: 0 },
-        ],
-      },
-      {
-        id: "q11-immune-recovery",
-        phase: 3,
-        text: "How long does it typically take you to recover from a cold or flu?",
-        type: "single",
-        isAdaptive: true,
-        options: [
-          { label: "A few days", score: 4 },
-          { label: "About a week", score: 2 },
-          { label: "1-2 weeks", score: 1 },
-          { label: "More than 2 weeks", score: 0 },
-        ],
-      },
-    ],
-  },
-  {
-    triggers: ["Joint pain", "Digestive issues"],
-    dimension: "energy",
-    questions: [
-      {
-        id: "q11-inflam-severity",
-        phase: 3,
-        text: "How would you rate your inflammatory symptoms?",
-        type: "single",
-        isAdaptive: true,
-        options: [
-          { label: "Rare/mild", score: 4 },
-          { label: "Occasional flare-ups", score: 2 },
-          { label: "Frequent, affects daily life", score: 1 },
-          { label: "Chronic and severe", score: 0 },
-        ],
-      },
-      {
-        id: "q11-toxin-exposure",
-        phase: 3,
-        text: "Have you been exposed to environmental toxins (mold, chemicals, heavy metals)?",
-        type: "single",
-        isAdaptive: true,
-        options: [
-          { label: "No known exposure", score: 4 },
-          { label: "Possible minor exposure", score: 2 },
-          { label: "Known moderate exposure", score: 1 },
-          { label: "Significant ongoing exposure", score: 0 },
-        ],
-      },
-    ],
-  },
-  {
-    triggers: ["Mood swings", "Weight struggles"],
-    dimension: "metabolic",
-    questions: [
-      {
-        id: "q11-metabolic-meals",
-        phase: 3,
-        text: "How stable is your energy after meals?",
-        type: "single",
-        isAdaptive: true,
-        options: [
-          { label: "Stable, no crashes", score: 4 },
-          { label: "Minor dip sometimes", score: 2 },
-          { label: "Regular post-meal crashes", score: 1 },
-          { label: "Severe crashes, need to nap", score: 0 },
-        ],
-      },
-      {
-        id: "q11-stress-recovery",
-        phase: 3,
-        text: "How would you describe your stress recovery?",
-        type: "single",
-        isAdaptive: true,
-        options: [
-          { label: "Bounce back quickly", score: 4 },
-          { label: "Takes a day or two", score: 2 },
-          { label: "Takes a week+", score: 1 },
-          { label: "Feel permanently stressed", score: 0 },
-        ],
-      },
-    ],
-  },
-  {
-    triggers: ["Skin dullness"],
-    dimension: "skin",
-    questions: [
-      {
-        id: "q11-skin-response",
-        phase: 3,
-        text: "How would you describe your skin's response to skincare products?",
-        type: "single",
-        isAdaptive: true,
-        options: [
-          { label: "Responds well", score: 4 },
-          { label: "Some improvement", score: 2 },
-          { label: "Minimal response", score: 1 },
-          { label: "No improvement despite trying", score: 0 },
-        ],
-      },
-    ],
-  },
-];
+export const NONE_OF_THE_ABOVE = "None of the above";
 
-export const FALLBACK_ADAPTIVE: Question[] = [
-  {
-    id: "q11-fallback-vitality",
-    phase: 3,
-    text: "How would you rate your overall vitality compared to 5 years ago?",
-    type: "single",
-    isAdaptive: true,
-    options: [
-      { label: "Better than ever", score: 4 },
-      { label: "About the same", score: 3 },
-      { label: "Noticeably declined", score: 1 },
-      { label: "Significantly worse", score: 0 },
-    ],
-  },
-  {
-    id: "q11-fallback-approach",
-    phase: 3,
-    text: "What best describes your current approach to health optimization?",
-    type: "single",
-    isAdaptive: true,
-    options: [
-      { label: "Active biohacker", score: 4 },
-      { label: "Regular supplements + exercise", score: 3 },
-      { label: "Trying to improve", score: 2 },
-      { label: "Haven't started yet", score: 1 },
-    ],
-  },
-];
+/** Bump when the questions change, so a report never tries to read answers saved by an older quiz. */
+export const QUIZ_VERSION = 2;
 
-// Micro-insight trigger points
-export const INSIGHT_TRIGGERS = ["q3", "q6", "q9", "q12"] as const;
+/**
+ * People who say they wouldn't invest £500 get their estimate and the research,
+ * but no consultation offer, portfolio or calendar. Unanswered counts as qualified
+ * so an older saved session is never locked out.
+ */
+export function isQualified(answers: { questionId: string; value: unknown }[]): boolean {
+  return answers.find((a) => a.questionId === "investment")?.value !== "no";
+}

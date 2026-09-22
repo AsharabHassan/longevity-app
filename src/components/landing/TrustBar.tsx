@@ -1,6 +1,6 @@
 "use client";
 
-import { Lock, Shield, Cpu, Award } from "lucide-react";
+import { Lock, Shield, BookOpen, Award } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 interface TrustItemProps {
@@ -18,10 +18,10 @@ function TrustItem({ icon: Icon, text }: TrustItemProps) {
 }
 
 const items: TrustItemProps[] = [
-  { icon: Lock, text: "256-bit Encrypted" },
-  { icon: Shield, text: "GDPR Compliant" },
-  { icon: Cpu, text: "AI-Powered Analysis" },
-  { icon: Award, text: "GMC Registered" },
+  { icon: Award, text: "GMC-registered doctors" },
+  { icon: Shield, text: "CQC (London) · HIS (Glasgow)" },
+  { icon: BookOpen, text: "Every figure sourced" },
+  { icon: Lock, text: "Your answers stay private" },
 ];
 
 export default function TrustBar() {

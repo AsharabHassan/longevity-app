@@ -14,33 +14,31 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Discover Your Biological Age | Harley Street Medical Wellness",
+  title: "Lifestyle Age Assessment | Harley Street Medical Wellness",
   description:
-    "AI-powered longevity assessment. Get your wellness score, biological age, and personalized treatment plan in 3 minutes.",
+    "A free lifestyle age estimate. A three-minute questionnaire, every figure sourced from published research, and a free consultation to go through it.",
   keywords: [
-    "biological age test UK",
+    "lifestyle age assessment",
     "longevity assessment London",
-    "IV therapy quiz",
-    "wellness score test",
-    "NAD+ IV drip London",
-    "EBOO therapy UK",
+    "longevity clinic Glasgow",
+    "healthy ageing consultation",
   ],
   icons: {
     icon: "/logo.png",
     apple: "/logo.png",
   },
   openGraph: {
-    title: "Discover Your Biological Age | Harley Street Medical Wellness",
+    title: "Lifestyle Age Assessment | Harley Street Medical Wellness",
     description:
-      "AI-powered longevity assessment with personalized treatment recommendations.",
+      "A free lifestyle age estimate with every figure sourced from published research.",
     type: "website",
     siteName: "Harley Street Medical Wellness",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Discover Your Biological Age",
+    title: "Lifestyle Age Assessment",
     description:
-      "AI-powered longevity assessment with personalized treatment recommendations.",
+      "A free lifestyle age estimate with every figure sourced from published research.",
   },
   robots: { index: true, follow: true },
 };
@@ -59,9 +57,9 @@ export default function RootLayout({
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "MedicalWebPage",
-              name: "Biological Age Assessment",
+              name: "Lifestyle Age Assessment",
               description:
-                "AI-powered longevity quiz and personalized treatment recommendations",
+                "A questionnaire-based lifestyle age estimate sourced from published research",
               provider: {
                 "@type": "MedicalOrganization",
                 name: "Harley Street Medical Wellness",

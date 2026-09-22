@@ -4,16 +4,12 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { ArrowUp, X, Calendar, MessageCircle } from "lucide-react";
 import ChatMessage from "./ChatMessage";
 import { PixelEvents } from "@/lib/pixel";
-import type { ChatMessage as ChatMessageType, QuizAnswer } from "@/lib/types";
+import { CLINIC } from "@/lib/clinic";
+import { topDrivers } from "@/lib/lifestyleAge";
+import type { ChatMessage as ChatMessageType, LifestyleAgeResult } from "@/lib/types";
 
 interface ChatWidgetProps {
-  context: {
-    answers: QuizAnswer[];
-    wellnessScore: number;
-    biologicalAge: number;
-    treatments: string[];
-  };
-  lowestDimension: string;
+  result: LifestyleAgeResult;
 }
 
 function DnaIcon({ size = 22, className = "" }: { size?: number; className?: string }) {
@@ -49,7 +45,8 @@ function TypingIndicator() {
   );
 }
 
-export default function ChatWidget({ context, lowestDimension }: ChatWidgetProps) {
+export default function ChatWidget({ result }: ChatWidgetProps) {
+  const topDriver = topDrivers(result, 1)[0]?.name.toLowerCase();
   const [isOpen, setIsOpen] = useState(false);
   const [hasOpened, setHasOpened] = useState(false);
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
@@ -87,16 +84,6 @@ export default function ChatWidget({ context, lowestDimension }: ChatWidgetProps
     }
   }, [showTooltip]);
 
-  // Convert answers array to record for Claude API
-  const answersRecord: Record<string, string | string[] | number> = {};
-  if (Array.isArray(context.answers)) {
-    for (const a of context.answers) {
-      if (a.questionId) {
-        answersRecord[a.questionId] = a.value;
-      }
-    }
-  }
-
   // Initialize opening message on first open
   useEffect(() => {
     if (isOpen && !hasOpened) {
@@ -107,18 +94,19 @@ export default function ChatWidget({ context, lowestDimension }: ChatWidgetProps
       setMessages([
         {
           role: "assistant",
-          content: `Hi! I've reviewed your longevity report. Your <strong>${lowestDimension}</strong> score is your biggest opportunity for improvement. Want me to explain what's happening at the cellular level and how we can address it?`,
+          content: topDriver
+            ? `Hi, I'm an AI assistant, not a clinician. I can explain how your lifestyle age estimate was worked out — for example why <strong>${topDriver}</strong> is your biggest driver — or help you book your free consultation.`
+            : "Hi, I'm an AI assistant, not a clinician. I can explain how your lifestyle age estimate was worked out, or help you book your free consultation.",
         },
       ]);
     }
-  }, [isOpen, hasOpened, lowestDimension]);
+  }, [isOpen, hasOpened, topDriver]);
 
-  // Conversion-focused suggested questions
   const suggestedQuestions = [
-    `Why is my ${lowestDimension.toLowerCase()} score so low?`,
-    "How quickly will I notice results?",
-    "Why is this better than supplements?",
-    "What happens during my first session?",
+    topDriver ? `Why does ${topDriver} matter so much?` : "How was my estimate worked out?",
+    "Is this a real biological age test?",
+    "What happens in the free consultation?",
+    "What tests do you offer?",
   ];
 
   async function sendMessage(text: string) {
@@ -138,12 +126,7 @@ export default function ChatWidget({ context, lowestDimension }: ChatWidgetProps
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: updatedMessages,
-          context: {
-            answers: answersRecord,
-            wellnessScore: context.wellnessScore,
-            biologicalAge: context.biologicalAge,
-            treatments: context.treatments,
-          },
+          result,
         }),
       });
       const data = await res.json();
@@ -193,7 +176,7 @@ export default function ChatWidget({ context, lowestDimension }: ChatWidgetProps
               <MessageCircle size={16} className="shrink-0 text-gold" />
               <p className="text-xs leading-relaxed text-white/80">
                 <strong className="text-gold">Questions about your score?</strong>{" "}
-                Ask our AI advisor what your results mean & how to improve
+                Ask our AI assistant how your estimate was worked out
               </p>
               <button
                 onClick={() => setShowTooltip(false)}
@@ -236,10 +219,10 @@ export default function ChatWidget({ context, lowestDimension }: ChatWidgetProps
                 <DnaIcon size={18} className="text-gold" />
               </div>
               <div>
-                <p className="font-heading text-sm font-bold text-white">Longevity Advisor</p>
+                <p className="font-heading text-sm font-bold text-white">AI Assistant</p>
                 <div className="flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                  <span className="text-[10px] text-muted">Online · Powered by AI</span>
+                  <span className="text-[10px] text-muted">Automated · Not medical advice</span>
                 </div>
               </div>
             </div>
@@ -281,10 +264,10 @@ export default function ChatWidget({ context, lowestDimension }: ChatWidgetProps
             {showBookingPrompt && !isLoading && (
               <div className="animate-fade-in mt-2 rounded-xl border border-gold/15 bg-[rgba(212,168,83,0.06)] p-4 text-center">
                 <p className="text-xs leading-relaxed text-muted">
-                  Ready to take the next step? A free consultation is the best way to create your personalized treatment plan.
+                  A free consultation is the best place for questions about your own health.
                 </p>
                 <a
-                  href="https://link.harleystreetmedicalwellness.co.uk/widget/bookings/wellness-consultant-1"
+                  href={CLINIC.bookingUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => PixelEvents.bookingClick("chat")}
