@@ -20,7 +20,7 @@ const SUMMARY_SYSTEM = `You write a short personal summary of a lifestyle questi
 Use ONLY the facts in the user message. Write 3-4 sentences, at most 90 words, in warm, plain British English, addressed to the reader as "you".
 
 Rules:
-- Call the result a "lifestyle age estimate". It is an estimate from a questionnaire, never a measurement or a test result.
+- Call the result a "biological age estimate". It is an estimate from a lifestyle questionnaire, never a measurement or a test result.
 - Use no numbers other than the ones you are given.
 - Never name or hint at any treatment, medicine, supplement, drip, injection, test brand or product.
 - Do not explain biological mechanisms. Do not diagnose or suggest a cause for any concern.

@@ -39,7 +39,7 @@ export default function EstimateHero({ result, firstName }: EstimateHeroProps) {
   return (
     <div className="animate-fade-in flex flex-col items-center py-8 text-center">
       <p className="mb-6 text-[10px] font-semibold tracking-[4px] text-muted/50 uppercase">
-        {firstName ? `${firstName}, your lifestyle age estimate` : "Your lifestyle age estimate"}
+        {firstName ? `${firstName}, your biological age estimate` : "Your biological age estimate"}
       </p>
 
       <div className="relative flex items-center justify-center">
@@ -60,8 +60,8 @@ export default function EstimateHero({ result, firstName }: EstimateHeroProps) {
       <p className="mt-5 max-w-sm text-[15px] leading-relaxed text-white/85">{summary}</p>
 
       <p className="mt-4 max-w-sm text-[12px] leading-relaxed text-muted/50">
-        This is an estimate from your answers, shown as a range because no questionnaire can be exact.
-        It is not a lab measurement.{" "}
+        Based on your lifestyle answers and shown as a range, because no questionnaire can be exact.
+        It is not a lab measurement. The blood and epigenetic tests in a wellness consultation give a lab-based estimate.{" "}
         <a href="/methodology" className="underline underline-offset-2 hover:text-gold/80">
           How we work it out
         </a>

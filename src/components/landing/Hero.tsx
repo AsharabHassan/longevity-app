@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Lock, ArrowRight } from "lucide-react";
 import { CLINIC } from "@/lib/clinic";
+import { DEFAULT_HEADLINE, type LandingHeadline } from "@/lib/adHeadlines";
 
 /* ── Floating Particles (deterministic to avoid SSR hydration mismatch) ── */
 const PARTICLES = [
@@ -36,7 +37,7 @@ function Particles() {
 }
 
 /* ══════════════════════════════════════ */
-export default function Hero() {
+export default function Hero({ headline = DEFAULT_HEADLINE }: { headline?: LandingHeadline }) {
   return (
     <section className="relative flex flex-col items-center px-6 pt-12 pb-6 sm:pt-20 sm:pb-10">
       <Particles />
@@ -54,7 +55,7 @@ export default function Hero() {
       </div>
 
       <p className="mb-6 animate-fade-in text-[10px] font-semibold tracking-[3px] text-gold/70 uppercase">
-        An evidence-based lifestyle age assessment
+        A free biological age estimate
       </p>
 
       {/* Headline */}
@@ -62,9 +63,9 @@ export default function Hero() {
         className="font-heading text-center text-[32px] font-bold leading-[1.1] sm:text-5xl md:text-6xl animate-fade-in-up text-glow"
         style={{ animationDelay: "0.2s" }}
       >
-        We Measure Before
+        {headline.line}
         <br />
-        <span className="gold-text">We Recommend Anything.</span>
+        <span className="gold-text">{headline.gold}</span>
       </h1>
 
       {/* Subtext */}
@@ -72,7 +73,7 @@ export default function Hero() {
         className="mt-5 max-w-lg text-center text-[15px] leading-relaxed text-muted sm:text-lg animate-fade-in-up"
         style={{ animationDelay: "0.35s" }}
       >
-        A short questionnaire. Three minutes. An honest estimate of how your habits compare with the research — and a free consultation to go through it.
+        {headline.sub}
       </p>
 
       {/* CTA Button */}

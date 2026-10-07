@@ -75,7 +75,7 @@ export default function ClinicPathway() {
 
       <p className="mt-4 text-[11.5px] leading-relaxed text-muted/50">
         Which of these, if any, is right for you is a clinical decision made after assessment, not by a questionnaire.
-        We don&apos;t claim that any therapy changes your lifestyle age estimate.
+        We don&apos;t claim that any therapy changes your biological age estimate.
       </p>
     </section>
   );

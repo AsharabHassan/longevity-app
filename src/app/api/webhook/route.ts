@@ -1,10 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { createHash } from "crypto";
 import { topDrivers } from "@/lib/lifestyleAge";
 import type { LeadData, LifestyleAgeResult } from "@/lib/types";
+import { sendWebsiteLead } from "@/lib/metaConversions";
+import { cleanAdCode } from "@/lib/adHeadlines";
+import { emailReport } from "@/lib/reportEmail";
 
-const FB_PIXEL_ID = "1706943603632013";
+const FB_PIXEL_ID = "1613661453278984";
 
 /** SHA-256 hash helper for Meta CAPI user data */
 function sha256(value: string): string {
@@ -117,6 +120,8 @@ export async function POST(req: NextRequest) {
 
       // ── Quiz Source ──
       source: body.source || "quiz",
+      // Neutral ad code from the link (E1, E2...). Goes to the CRM only, never to Meta.
+      ad_code: cleanAdCode(body.ad_code),
 
       // ── Lifestyle Age Estimate (a questionnaire estimate, not a measurement) ──
       lifestyle_age_estimate: result?.estimate ?? 0,
@@ -124,10 +129,6 @@ export async function POST(req: NextRequest) {
       lifestyle_age_high: result?.high ?? 0,
       lifestyle_offset_years: result?.offsetYears ?? 0,
       chronological_age: result?.chronologicalAge ?? 0,
-
-      // Legacy keys kept so existing GHL workflows keep firing
-      biological_age: result?.estimate ?? 0,
-      wellness_score: result?.lifestyleScore ?? 0,
 
       ...factorFields,
 
@@ -160,12 +161,46 @@ export async function POST(req: NextRequest) {
       meta_fbp: body.fbp || "",
     };
 
-    // Fire and forget — don't block the response
-    sendWebhook(flatPayload).catch((err) =>
-      console.error("Webhook ultimately failed:", err)
-    );
+    const delivered = await sendWebhook(flatPayload);
+    if (!delivered) {
+      return NextResponse.json(
+        { delivered: false, error: "Unable to save your assessment. Please try again." },
+        { status: 502 }
+      );
+    }
 
-    return NextResponse.json({ queued: true, event_id: eventId });
+    // Email the patient their report and put the PDF link on their GHL contact.
+    // Runs after the response so the patient isn't kept waiting on the upload.
+    after(async () => {
+      const report = await emailReport({
+        lead,
+        result,
+        location: body.location === "Glasgow" ? "Glasgow" : "London",
+        qualified: body.qualified !== false,
+        answers: Array.isArray(body.answers) ? body.answers : [],
+      });
+      if (report.skipped) console.warn("Report email skipped:", report.error ?? "GHL_API_TOKEN / GHL_LOCATION_ID not set");
+      else if (!report.ok) console.error("Report delivery failed:", report.error);
+      else if (!report.emailed) console.error("Report uploaded to GHL but the email was not sent");
+    });
+
+    // Only a saved, qualified assessment sends a website Lead. GHL remains the
+    // contact/assessment destination; Meta receives a separate allowlisted payload.
+    if (body.qualified !== false && process.env.META_WEBSITE_CAPI_ENABLED === "true") {
+      after(() => sendWebsiteLead({
+        eventId,
+        eventTime,
+        emailHash: String(flatPayload.meta_em),
+        phoneHash: String(flatPayload.meta_ph),
+        firstNameHash: String(flatPayload.meta_fn),
+        ip,
+        userAgent,
+        fbc: typeof body.fbc === "string" ? body.fbc : "",
+        fbp: typeof body.fbp === "string" ? body.fbp : "",
+      }).then(() => undefined));
+    }
+
+    return NextResponse.json({ delivered: true, event_id: eventId });
   } catch (error) {
     console.error("Webhook route error:", error);
     return NextResponse.json({ queued: false }, { status: 500 });

@@ -17,6 +17,7 @@ import ClinicPathway from "@/components/report/ClinicPathway";
 import ConcernBridge from "@/components/report/ConcernBridge";
 import ConsultationCard from "@/components/report/ConsultationCard";
 import ClinicShowcase from "@/components/report/ClinicShowcase";
+import ConsultationIncludes from "@/components/shared/ConsultationIncludes";
 import ReportActions from "@/components/report/ReportActions";
 import { CLINIC, type ClinicLocation } from "@/lib/clinic";
 import { DISCLAIMER } from "@/lib/evidence";
@@ -24,6 +25,7 @@ import { calculateLifestyleAge, topDrivers } from "@/lib/lifestyleAge";
 import { matchProtocols, type Protocol } from "@/lib/protocols";
 import { QUIZ_VERSION, isQualified } from "@/lib/questions";
 import type { LeadData, LifestyleAgeResult, QuizAnswer } from "@/lib/types";
+import { PixelEvents } from "@/lib/pixel";
 
 function Divider() {
   return <div className="my-10 h-px w-full bg-gradient-to-r from-transparent via-white/5 to-transparent" />;
@@ -52,11 +54,21 @@ export default function ReportPage() {
       setQualified(isQualified(parsed.answers));
       if (parsed.lead) setLead(parsed.lead);
       if (parsed.location === "Glasgow") setLocation("Glasgow");
+      if (!isQualified(parsed.answers) && sessionStorage.getItem("pendingUnqualifiedLead") === "1") {
+        sessionStorage.removeItem("pendingUnqualifiedLead");
+        PixelEvents.unqualifiedLead();
+      }
     } catch {
       sessionStorage.removeItem("quizResults");
+      sessionStorage.removeItem("pendingUnqualifiedLead");
       router.replace("/quiz");
     }
   }, [router]);
+
+  // One "report viewed" signal per visit, so retargeting can find people who saw it and did not book
+  useEffect(() => {
+    if (result) PixelEvents.reportViewed();
+  }, [result]);
 
   if (!result) {
     return (
@@ -82,6 +94,7 @@ export default function ReportPage() {
           <>
             <DirectorCard firstName={lead.firstName} />
             <BookCTA />
+            <ConsultationIncludes className="mt-8" />
           </>
         )}
 

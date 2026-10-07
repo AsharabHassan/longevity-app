@@ -9,8 +9,9 @@ describe("isQualified", () => {
     expect(isQualified([])).toBe(true);
   });
 
-  it("asks the investment question before location", () => {
+  it("no longer asks the investment question, so everyone sees the consultation offer", () => {
     const ids = QUIZ_SEQUENCE.map((q) => q.id);
-    expect(ids.indexOf("investment")).toBe(ids.indexOf("location") - 1);
+    expect(ids).not.toContain("investment");
+    expect(ids[ids.length - 1]).toBe("location");
   });
 });

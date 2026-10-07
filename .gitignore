@@ -48,3 +48,6 @@ next-env.d.ts
 /.playwright-mcp/
 /output/
 /tmp/
+
+.vercel
+.env*

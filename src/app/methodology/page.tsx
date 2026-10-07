@@ -4,8 +4,8 @@ import { CLINIC } from "@/lib/clinic";
 import { CITATIONS, DISCLAIMER, METHODOLOGY_NOTE } from "@/lib/evidence";
 
 export const metadata: Metadata = {
-  title: `How the Lifestyle Age Estimate works | ${CLINIC.brand}`,
-  description: "The method, the studies and the limits behind the lifestyle age estimate.",
+  title: `How the Biological Age Estimate works | ${CLINIC.brand}`,
+  description: "The method, the studies and the limits behind the biological age estimate.",
 };
 
 const FACTORS = [
@@ -24,18 +24,20 @@ export default function MethodologyPage() {
     <main className="min-h-screen bg-bg">
       <article className="mx-auto max-w-[640px] px-5 py-12 text-[14px] leading-relaxed text-muted/80">
         <p className="text-[10px] font-semibold tracking-[3px] text-gold/60 uppercase mb-2">Methodology</p>
-        <h1 className="font-heading text-3xl font-bold text-white mb-6">How the lifestyle age estimate works</h1>
+        <h1 className="font-heading text-3xl font-bold text-white mb-6">How the biological age estimate works</h1>
 
         <h2 className="font-heading text-lg font-bold text-white mt-8 mb-2">What it is</h2>
         <p>
-          An estimate, from a questionnaire, of how your day-to-day habits compare with those of people your age in
-          large population studies. It is shown as a range of plus or minus two years because no questionnaire can be exact.
+          An estimate of your biological age, worked out from a questionnaire about your day-to-day habits and compared
+          with people your age in large population studies. It is shown as a range of plus or minus two years because no
+          questionnaire can be exact.
         </p>
 
         <h2 className="font-heading text-lg font-bold text-white mt-8 mb-2">What it is not</h2>
         <p>
-          It is not a measurement of biological age, and it is not a medical test. Biological age can only be measured
-          from blood or DNA markers, and even those tests carry real uncertainty. Nothing in your result diagnoses,
+          It is not a lab measurement of biological age, and it is not a medical test. A lab-based estimate comes from
+          blood or DNA markers, such as the blood and epigenetic tests in a wellness consultation, and even those
+          tests carry real uncertainty. Nothing in your result diagnoses,
           treats or prevents any condition.
         </p>
 

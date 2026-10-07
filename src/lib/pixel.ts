@@ -4,9 +4,9 @@ declare global {
   }
 }
 
-export function trackEvent(event: string, data?: Record<string, unknown>) {
+export function trackEvent(event: string, data?: Record<string, unknown>, eventId?: string) {
   if (typeof window !== "undefined" && window.fbq) {
-    window.fbq("track", event, data);
+    window.fbq("track", event, data ?? {}, ...(eventId ? [{ eventID: eventId }] : []));
   }
 }
 
@@ -28,10 +28,16 @@ export function getMetaCookies(): { fbc: string; fbp: string } {
 export const PixelEvents = {
   startQuiz: () => trackCustomEvent("StartQuiz"),
   quizComplete: () => trackCustomEvent("QuizComplete"),
-  lead: (value?: number) =>
-    trackEvent("Lead", value ? { value, currency: "GBP" } : undefined),
+  lead: (eventId: string) => trackEvent("Lead", { currency: "GBP" }, eventId),
+  // A separate standard event keeps the qualified Lead optimization clean.
+  unqualifiedLead: () => trackEvent("CompleteRegistration"),
   downloadReport: () => trackCustomEvent("DownloadReport"),
   chatStarted: () => trackCustomEvent("ChatStarted"),
   bookingClick: (location: string) =>
     trackCustomEvent("BookingClick", { location }),
+  // The report was shown. Gives retargeting an audience of "saw the report, did not book".
+  // No answers, scores or concerns are sent: only the fact that the page loaded.
+  reportViewed: () => trackEvent("ViewContent", { content_name: "report" }),
+  // A consultation was actually booked in the calendar.
+  schedule: () => trackEvent("Schedule", {}),
 } as const;

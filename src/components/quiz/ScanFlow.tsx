@@ -69,6 +69,7 @@ export default function ScanFlow() {
   const [body, setBody] = useState({ cm: "", kg: "", ft: "", inches: "", st: "", lb: "" });
   const [leadData, setLeadData] = useState<LeadData>({ firstName: "", email: "", phone: "" });
   const [consent, setConsent] = useState(false);
+  const [submissionError, setSubmissionError] = useState("");
   const firedStart = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -170,13 +171,12 @@ export default function ScanFlow() {
     async (e: React.FormEvent) => {
       e.preventDefault();
       if (!leadData.firstName || !leadData.email || !leadData.phone || !consent) return;
+      setSubmissionError("");
       setPhase("processing");
 
       try {
         const answersArray = Array.from(answers.values());
         const qualified = isQualified(answersArray);
-        // Only qualified leads count as a Meta "Lead", so ad delivery optimises towards them
-        if (qualified) PixelEvents.lead();
         const result = calculateLifestyleAge(answersArray);
         const location = answers.get("location")?.value === "Glasgow" ? "Glasgow" : "London";
 
@@ -188,23 +188,40 @@ export default function ScanFlow() {
 
         const { fbc, fbp } = getMetaCookies();
 
-        await fetch("/api/webhook", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            lead: leadData,
-            consent: true,
-            questionsWithAnswers,
-            result,
-            location,
-            qualified,
-            protocols: matchProtocols(answersArray, result).map((p) => `${p.name} (${p.concern})`),
-            source: "scan-flow",
-            fbc,
-            fbp,
-            page_url: window.location.href,
-          }),
-        }).catch(() => {});
+        // Visitors who declined the consultation pathway still receive their
+        // on-screen estimate. Count their completed form separately in Meta,
+        // without entering the consultation email workflow or qualified Lead event.
+        if (qualified) {
+          const response = await fetch("/api/webhook", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              lead: leadData,
+              consent: true,
+              questionsWithAnswers,
+              answers: answersArray,
+              result,
+              location,
+              qualified,
+              protocols: matchProtocols(answersArray, result).map((p) => `${p.name} (${p.concern})`),
+              source: "scan-flow",
+              ad_code: sessionStorage.getItem("adCode") ?? "",
+              fbc,
+              fbp,
+              page_url: window.location.href,
+            }),
+          });
+          const delivery = await response.json();
+          if (!response.ok || !delivery.delivered) {
+            throw new Error(delivery.error || "Unable to save your assessment. Please try again.");
+          }
+          // Count a qualified lead only after the CRM webhook has accepted it.
+          if (delivery.event_id) PixelEvents.lead(delivery.event_id);
+        } else {
+          // Fire after the report has mounted, so navigation cannot interrupt
+          // the browser pixel request. The report clears this one-time flag.
+          sessionStorage.setItem("pendingUnqualifiedLead", "1");
+        }
 
         sessionStorage.removeItem("reportSummary");
         sessionStorage.setItem(
@@ -215,6 +232,7 @@ export default function ScanFlow() {
         router.push("/report");
       } catch (err) {
         console.error("Submission error:", err);
+        setSubmissionError("We could not save your assessment. Please try again.");
         setPhase("lead_capture");
       }
     },
@@ -263,11 +281,12 @@ export default function ScanFlow() {
         <div className="w-full max-w-md animate-fade-in">
           <h2 className="font-heading text-2xl font-bold text-center mb-1">Your estimate is ready</h2>
           <p className="text-center text-sm text-muted/60 mb-6">
-            Where should we send your{" "}
-            <span className="text-gold font-medium">Lifestyle Age Report</span>?
+            Enter your details to view your{" "}
+            <span className="text-gold font-medium">Biological Age Report</span>.
           </p>
 
           <form onSubmit={handleLeadSubmit} className="space-y-3">
+            {submissionError && <p role="alert" className="text-sm text-red-300">{submissionError}</p>}
             <input
               type="text"
               placeholder="First name"
@@ -323,7 +342,10 @@ export default function ScanFlow() {
               See My Estimate →
             </button>
           </form>
-          <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-[10px] text-muted/40">
+          <p className="mt-4 text-center text-[12px] leading-relaxed text-muted/70">
+            Our team will call you to explain the full wellness assessment.
+          </p>
+          <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-[10px] text-muted/40">
             <Lock size={10} strokeWidth={2} className="shrink-0" />
             Used only for your report and consultation. Never sold.
           </p>

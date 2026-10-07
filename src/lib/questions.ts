@@ -4,7 +4,8 @@ import type { Question } from "./types";
  * The quiz, in order. Only the eight lifestyle factors (smoking, activity, body,
  * diet, sleep, alcohol, stress, social) feed the estimate — see lifestyleAge.ts.
  * Goal, concerns and location personalise the report and never move the number.
- * "investment" decides whether the report shows the clinic's offer at all.
+ * The old "investment" question was removed: the price is shown up front instead, and the
+ * team qualifies on the call. isQualified still honours it if an older saved answer exists.
  */
 export const QUIZ_SEQUENCE: Question[] = [
   {
@@ -148,17 +149,6 @@ export const QUIZ_SEQUENCE: Question[] = [
     ],
   },
   {
-    id: "investment",
-    text: "If testing or a programme looked right for you, would you be comfortable investing £500 or more in your health?",
-    subtext: "There's no wrong answer. It tells us whether to show you what the clinic offers.",
-    type: "single",
-    options: [
-      { label: "Yes, comfortably", value: "yes" },
-      { label: "Yes, if I can see the value", value: "yesIfValue" },
-      { label: "Not right now", value: "no" },
-    ],
-  },
-  {
     id: "location",
     text: "Which clinic is more convenient for you?",
     type: "single",
@@ -172,7 +162,7 @@ export const QUIZ_SEQUENCE: Question[] = [
 export const NONE_OF_THE_ABOVE = "None of the above";
 
 /** Bump when the questions change, so a report never tries to read answers saved by an older quiz. */
-export const QUIZ_VERSION = 2;
+export const QUIZ_VERSION = 3;
 
 /**
  * People who say they wouldn't invest £500 get their estimate and the research,

@@ -95,8 +95,8 @@ export default function ChatWidget({ result }: ChatWidgetProps) {
         {
           role: "assistant",
           content: topDriver
-            ? `Hi, I'm an AI assistant, not a clinician. I can explain how your lifestyle age estimate was worked out — for example why <strong>${topDriver}</strong> is your biggest driver — or help you book your free consultation.`
-            : "Hi, I'm an AI assistant, not a clinician. I can explain how your lifestyle age estimate was worked out, or help you book your free consultation.",
+            ? `Hi, I'm an AI assistant, not a clinician. I can explain how your biological age estimate was worked out — for example why <strong>${topDriver}</strong> is your biggest driver — or help you book your free consultation.`
+            : "Hi, I'm an AI assistant, not a clinician. I can explain how your biological age estimate was worked out, or help you book your free consultation.",
         },
       ]);
     }

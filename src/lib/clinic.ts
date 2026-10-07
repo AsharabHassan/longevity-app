@@ -46,6 +46,8 @@ interface ClinicConfig {
     /** Optional short introduction video, e.g. "/videos/dr-ahmad-intro.mp4". Hidden while empty. */
     video: string;
   };
+  /** The paid wellness consultation that follows the free call. Shown on the landing page and the report. */
+  wellnessConsultation: { price: string; includes: string[] };
   /** From the live Google Business Profile, e.g. { rating: 4.9, count: 212 }. */
   googleReviews: { rating: number; count: number } | null;
   /**
@@ -83,6 +85,17 @@ export const CLINIC: ClinicConfig = {
     // From the team section of harleystreetmedicalwellness.co.uk/london
     bio: "Founder of the clinic, with extensive experience in aesthetic and regenerative medicine.",
     video: "",
+  },
+  wellnessConsultation: {
+    price: "£250",
+    includes: [
+      "Extensive blood testing, chosen around your history",
+      "DNA testing, for inherited tendencies",
+      "Epigenetic testing, for a lab-based biological age estimate",
+      "A doctor who explains every result",
+      "A written personal plan for the years ahead",
+      "Reviews to track your progress",
+    ],
   },
   googleReviews: null,
   testimonials: [],

@@ -13,12 +13,12 @@ export default function LongevityCard({ result }: { result: LifestyleAgeResult }
   const topDriver = topDrivers(result, 1)[0]?.name;
   const topHelper = [...result.factors].sort((a, b) => a.years - b.years)[0];
 
-  const shareText = `My lifestyle age estimate is ${low}–${high} (I'm ${chronologicalAge}). It's an estimate from a 3-minute questionnaire, based on published research. What's yours?`;
+  const shareText = `My biological age estimate is ${low}–${high} (I'm ${chronologicalAge}). It's an estimate from a 3-minute lifestyle questionnaire, based on published research. What's yours?`;
 
   const handleShare = useCallback(async () => {
     if (navigator.share) {
       try {
-        await navigator.share({ title: "My lifestyle age estimate", text: shareText, url: window.location.origin + "/quiz" });
+        await navigator.share({ title: "My biological age estimate", text: shareText, url: window.location.origin + "/quiz" });
         return;
       } catch {
         // cancelled or unsupported — fall through to the card
@@ -33,7 +33,7 @@ export default function LongevityCard({ result }: { result: LifestyleAgeResult }
       const html2canvas = (await import("html2canvas")).default;
       const canvas = await html2canvas(cardRef.current, { backgroundColor: "#0A0A0A", scale: 2 });
       const link = document.createElement("a");
-      link.download = "my-lifestyle-age-estimate.png";
+      link.download = "my-biological-age-estimate.png";
       link.href = canvas.toDataURL("image/png");
       link.click();
     } catch (err) {
@@ -60,7 +60,7 @@ export default function LongevityCard({ result }: { result: LifestyleAgeResult }
 
             <div ref={cardRef} className="overflow-hidden rounded-2xl border border-gold/20 bg-bg p-6" style={{ aspectRatio: "9/16", maxHeight: "70vh" }}>
               <div className="flex h-full flex-col items-center justify-between py-4 text-center">
-                <p className="text-[10px] font-bold tracking-[3px] text-gold uppercase">My lifestyle age estimate</p>
+                <p className="text-[10px] font-bold tracking-[3px] text-gold uppercase">My biological age estimate</p>
 
                 <div className="flex flex-col items-center gap-5">
                   <span className="font-heading text-6xl font-bold gold-text tabular-nums">{low}–{high}</span>

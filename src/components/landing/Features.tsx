@@ -10,7 +10,7 @@ const STEPS = [
   {
     icon: BookOpen,
     title: "See your estimate",
-    text: "A lifestyle age range, what's driving it, and the published study behind every figure.",
+    text: "A biological age estimate range, what's driving it, and the published study behind every figure.",
   },
   {
     icon: Stethoscope,

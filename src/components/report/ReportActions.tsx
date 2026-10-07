@@ -35,7 +35,7 @@ export default function ReportActions({ result, lead, location, qualified, proto
       const url = URL.createObjectURL(await res.blob());
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Lifestyle-Age-Report-${lead.firstName || "Report"}.pdf`;
+      a.download = `Biological-Age-Report-${lead.firstName || "Report"}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

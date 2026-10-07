@@ -22,7 +22,7 @@ export function summaryFacts(result: LifestyleAgeResult) {
 /** Deterministic summary, used when the AI wording is unavailable or fails its checks. */
 export function templateSummary(result: LifestyleAgeResult, firstName: string, qualified = true): string {
   const facts = summaryFacts(result);
-  const opener = `${firstName ? `${firstName}, your` : "Your"} answers put your lifestyle age estimate at ${facts.estimateLow}–${facts.estimateHigh}, against a calendar age of ${facts.calendarAge}.`;
+  const opener = `${firstName ? `${firstName}, your` : "Your"} answers put your biological age estimate at ${facts.estimateLow}–${facts.estimateHigh}, against a calendar age of ${facts.calendarAge}.`;
 
   const drivers = facts.addingYears.map((d) => d.factor);
   const middle =

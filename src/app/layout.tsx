@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Space_Grotesk, Inter } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
+import AdCodeCapture from "@/components/AdCodeCapture";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -14,10 +15,12 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Lifestyle Age Assessment | Harley Street Medical Wellness",
+  title: "Biological Age Estimate | Harley Street Medical Wellness",
   description:
-    "A free lifestyle age estimate. A three-minute questionnaire, every figure sourced from published research, and a free consultation to go through it.",
+    "A free biological age estimate. A three-minute questionnaire, every figure sourced from published research, and a free consultation to go through it.",
   keywords: [
+    "biological age estimate",
+    "biological age calculator",
     "lifestyle age assessment",
     "longevity assessment London",
     "longevity clinic Glasgow",
@@ -28,17 +31,17 @@ export const metadata: Metadata = {
     apple: "/logo.png",
   },
   openGraph: {
-    title: "Lifestyle Age Assessment | Harley Street Medical Wellness",
+    title: "Biological Age Estimate | Harley Street Medical Wellness",
     description:
-      "A free lifestyle age estimate with every figure sourced from published research.",
+      "A free biological age estimate with every figure sourced from published research.",
     type: "website",
     siteName: "Harley Street Medical Wellness",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Lifestyle Age Assessment",
+    title: "Biological Age Estimate",
     description:
-      "A free lifestyle age estimate with every figure sourced from published research.",
+      "A free biological age estimate with every figure sourced from published research.",
   },
   robots: { index: true, follow: true },
 };
@@ -57,9 +60,9 @@ export default function RootLayout({
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "MedicalWebPage",
-              name: "Lifestyle Age Assessment",
+              name: "Biological Age Estimate",
               description:
-                "A questionnaire-based lifestyle age estimate sourced from published research",
+                "A questionnaire-based biological age estimate sourced from published research",
               provider: {
                 "@type": "MedicalOrganization",
                 name: "Harley Street Medical Wellness",
@@ -82,6 +85,7 @@ export default function RootLayout({
         className={`${spaceGrotesk.variable} ${inter.variable} bg-bg text-foreground font-body antialiased`}
         suppressHydrationWarning
       >
+        <AdCodeCapture />
         {children}
         <Script id="fb-pixel" strategy="afterInteractive">
           {`

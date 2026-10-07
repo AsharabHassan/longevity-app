@@ -2,9 +2,13 @@ import Hero from "@/components/landing/Hero";
 import Features from "@/components/landing/Features";
 import TrustBar from "@/components/landing/TrustBar";
 import Link from "next/link";
+import ConsultationIncludes from "@/components/shared/ConsultationIncludes";
 import { CLINIC } from "@/lib/clinic";
+import { headlineFor } from "@/lib/adHeadlines";
 
-export default function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<{ utm_content?: string | string[] }> }) {
+  const { utm_content } = await searchParams;
+  const headline = headlineFor(Array.isArray(utm_content) ? utm_content[0] : utm_content);
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-bg">
       {/* Ambient gradient mesh */}
@@ -49,12 +53,15 @@ export default function Home() {
 
       {/* Content */}
       <main className="relative z-10 w-full max-w-2xl">
-        <Hero />
+        <Hero headline={headline} />
         <Features />
+        <div className="px-4 pb-6 sm:px-6">
+          <ConsultationIncludes />
+        </div>
         <TrustBar />
         <footer className="px-6 pb-10 text-center text-[10.5px] leading-relaxed text-muted/40">
           <p>
-            The lifestyle age estimate is educational and is not a medical test or a measurement of biological age.{" "}
+            The biological age estimate is educational. It is based on your lifestyle answers and is not a medical test or a lab measurement.{" "}
             <Link href="/methodology" className="underline underline-offset-2 hover:text-gold/80">
               How we work it out
             </Link>
