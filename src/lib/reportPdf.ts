@@ -1,20 +1,16 @@
 import { jsPDF } from "jspdf";
 import { CLINIC, consultationHost, type ClinicLocation } from "@/lib/clinic";
 import { CONCERN_GUIDES } from "@/lib/concerns";
-import { DISCLAIMER, METHODOLOGY_NOTE } from "@/lib/evidence";
 import { PROTOCOL_STAGES, protocolUrl, type Protocol } from "@/lib/protocols";
 import { templateSummary } from "@/lib/summary";
-import type { FactorResult, LeadData, LifestyleAgeResult } from "@/lib/types";
+import type { LeadData, LifestyleAgeResult } from "@/lib/types";
 
 /* ─── Colour Palette ─── */
 const BG = "#0A0A0A";
-const BG_CARD = "#141414";
-const BORDER = "#1A1A1A";
 const GOLD = "#D4A853";
 const WHITE = "#FFFFFF";
 const MUTED = "#A0A0A0";
 const AMBER = "#FBBF24";
-const GREEN = "#22C55E";
 
 const PAGE_W = 210;
 const PAGE_H = 297;
@@ -23,12 +19,6 @@ const CONTENT_W = PAGE_W - MARGIN * 2;
 
 function rgb(color: string): [number, number, number] {
   return [parseInt(color.slice(1, 3), 16), parseInt(color.slice(3, 5), 16), parseInt(color.slice(5, 7), 16)];
-}
-
-function yearsLabel(years: number): string {
-  if (years === 0) return "No effect";
-  const abs = Math.abs(years);
-  return `${years > 0 ? "+" : "-"}${abs} ${abs === 1 ? "year" : "years"}`;
 }
 
 /** Small layout helper that tracks the cursor and breaks pages. */
@@ -75,25 +65,6 @@ class Doc {
     this.text(title, { size: 14, bold: true, gap: 4 });
   }
 
-  factorRow(f: FactorResult) {
-    this.ensure(13);
-    this.pdf.setFillColor(...rgb(BG_CARD));
-    this.pdf.setDrawColor(...rgb(BORDER));
-    this.pdf.roundedRect(MARGIN, this.y, CONTENT_W, 11, 2, 2, "FD");
-    this.pdf.setFont("helvetica", "bold");
-    this.pdf.setFontSize(9.5);
-    this.pdf.setTextColor(...rgb(WHITE));
-    this.pdf.text(f.name, MARGIN + 4, this.y + 4.8);
-    this.pdf.setFont("helvetica", "normal");
-    this.pdf.setFontSize(8);
-    this.pdf.setTextColor(...rgb(MUTED));
-    this.pdf.text(this.pdf.splitTextToSize(`You said: ${f.answerLabel}`, CONTENT_W - 40)[0], MARGIN + 4, this.y + 8.8);
-    this.pdf.setFont("helvetica", "bold");
-    this.pdf.setFontSize(9.5);
-    this.pdf.setTextColor(...rgb(f.years > 0 ? AMBER : f.years < 0 ? GREEN : MUTED));
-    this.pdf.text(yearsLabel(f.years), PAGE_W - MARGIN - 4, this.y + 6.8, { align: "right" });
-    this.y += 13;
-  }
 }
 
 export interface ReportPdfInput {
@@ -123,12 +94,6 @@ export function buildReportPdf({ result, lead, location, qualified = true, proto
   doc.text(`Calendar age ${result.chronologicalAge}`, { size: 10, color: MUTED, gap: 6, align: "center" });
   doc.text(templateSummary(result, lead?.firstName ?? "", qualified), { size: 10, gap: 3 });
   doc.text("An estimate based on your lifestyle answers, shown as a range. It is not a lab measurement. The blood and epigenetic tests in a wellness consultation give a lab-based estimate.", { size: 8.5, color: MUTED, gap: 4 });
-
-  // ── Factors ──
-  doc.heading("What's behind your number", "Your answers, against the research");
-  const ordered = [...result.factors].sort((a, b) => b.years - a.years);
-  for (const f of ordered) doc.factorRow(f);
-  doc.text("The factors overlap, so your total is capped and may be less than the sum of the rows.", { size: 8, color: MUTED, gap: 4 });
 
   // ── What would change it ──
   const improvements = result.factors.filter((f) => f.improvement);
@@ -185,14 +150,6 @@ export function buildReportPdf({ result, lead, location, qualified = true, proto
     doc.text(`${CLINIC.phone} · ${CLINIC.email}`, { size: 9.5, gap: 1.5 });
     doc.text(`${site.address} · Regulated by the ${site.regulator}`, { size: 8.5, color: MUTED, gap: 6 });
   }
-
-  // ── Method & disclaimer ──
-  doc.heading("How we work it out", "Methodology");
-  doc.text(METHODOLOGY_NOTE, { size: 8.5, color: MUTED, gap: 3 });
-  doc.text(DISCLAIMER, { size: 8.5, color: MUTED, gap: 3 });
-  const sources = [...new Map(result.factors.flatMap((f) => f.citations).map((c) => [c.id, c])).values()];
-  doc.text("Sources", { size: 9, bold: true, gap: 1.5 });
-  for (const c of sources) doc.text(c.full, { size: 7.5, color: MUTED, gap: 1 });
 
   return Buffer.from(doc.pdf.output("arraybuffer"));
 }
